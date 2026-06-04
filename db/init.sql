@@ -18,7 +18,7 @@ ON CONFLICT (name) DO NOTHING;
 
 -- 2. Append-only change event log
 CREATE TABLE IF NOT EXISTS change_events (
-    id                      BIGSERIAL    PRIMARY KEY,
+    id                      BIGSERIAL    NOT NULL,
     effective_time          TIMESTAMPTZ  NOT NULL,
     recorded_time           TIMESTAMPTZ  NOT NULL DEFAULT now(),
     position                TEXT         NOT NULL REFERENCES positions(name),
@@ -29,7 +29,8 @@ CREATE TABLE IF NOT EXISTS change_events (
     installed_part_revision TEXT,
     installed_part_serial   TEXT,
     changed_by              TEXT         NOT NULL DEFAULT session_user,
-    note                    TEXT
+    note                    TEXT,
+    PRIMARY KEY (id, effective_time)
 );
 
 -- Convert to hypertable (TimescaleDB), partitioned by effective_time
