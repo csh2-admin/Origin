@@ -7,7 +7,7 @@ from fastapi import HTTPException, Request
 
 DB_HOST = os.environ.get("DB_HOST", "localhost")
 DB_PORT = int(os.environ.get("DB_PORT", "5432"))
-DB_NAME = os.environ.get("DB_NAME", "asset_model")
+DB_NAME = os.environ.get("DB_NAME", "csh2-database")
 
 SESSION_TTL = 8 * 3600
 

@@ -67,6 +67,6 @@ EXCEPTION WHEN duplicate_object THEN
     RAISE NOTICE 'app_readonly already exists';
 END $$;
 
-GRANT CONNECT ON DATABASE current_database TO app_readonly;
+GRANT CONNECT ON DATABASE "csh2-database" TO app_readonly;
 GRANT USAGE ON SCHEMA public TO app_readonly;
 GRANT SELECT ON TABLE positions, change_events TO app_readonly;
