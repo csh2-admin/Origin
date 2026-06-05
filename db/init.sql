@@ -15,8 +15,10 @@ INSERT INTO positions (name, display_name, description) VALUES
     ('dcv_poppet',    'DCV Poppet',    'Discharge check valve poppet'),
     ('dcv_spring',    'DCV Spring',    'Discharge check valve spring'),
     ('lp_seal_group', 'LP Seal Group', 'Low-pressure seal group'),
-    ('hp_seal_group', 'HP Seal Group', 'High-pressure seal group'),
-    ('piston',        'Piston',        'Pump piston assembly')
+    ('hp_seal_group',  'HP Seal Group',  'High-pressure seal group'),
+    ('piston',         'Piston',         'Pump piston assembly'),
+    ('retaining_ring', 'Retaining Ring', 'Retaining ring'),
+    ('head_block',     'Head Block',     'Head block assembly')
 ON CONFLICT (name) DO NOTHING;
 
 -- 2. Append-only change event log

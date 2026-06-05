@@ -49,7 +49,7 @@ export function Diagram({ state, selected, onSelect }: Props) {
   return (
     <svg
       className="diagram-svg"
-      viewBox="0 0 1100 570"
+      viewBox="0 0 1100 660"
       xmlns="http://www.w3.org/2000/svg"
     >
       {/* ---- Flow lines ---- */}
@@ -70,10 +70,10 @@ export function Diagram({ state, selected, onSelect }: Props) {
       >
         <rect
           className="housing-fill"
-          x={50} y={75} width={740} height={435} rx={3}
+          x={50} y={75} width={740} height={530} rx={3}
         />
         <text x={420} y={98} className="housing-label">PUMP HOUSING</text>
-        <text x={420} y={497} className="comp-part-label">
+        <text x={420} y={592} className="comp-part-label">
           {partLabel(getPos(state, "pump_housing"))}
         </text>
       </g>
@@ -115,8 +115,18 @@ export function Diagram({ state, selected, onSelect }: Props) {
         lines={["ICV", "SPRING"]}
         state={state} selected={selected} onSelect={onSelect} />
 
+      {/* Retaining Ring — bottom center-left */}
+      <Comp id="retaining_ring" x={430} y={490} w={155} h={90}
+        lines={["RETAINING", "RING"]}
+        state={state} selected={selected} onSelect={onSelect} />
+
+      {/* Head Block — bottom center-right */}
+      <Comp id="head_block" x={620} y={490} w={155} h={90}
+        lines={["HEAD", "BLOCK"]}
+        state={state} selected={selected} onSelect={onSelect} />
+
       {/* Footer */}
-      <text x={550} y={555} className="section-label" fontSize="9">
+      <text x={550} y={645} className="section-label" fontSize="9">
         Click a component to view details and log changes
       </text>
     </svg>
