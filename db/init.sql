@@ -43,31 +43,16 @@ SELECT create_hypertable(
 CREATE INDEX IF NOT EXISTS idx_change_events_position
     ON change_events (position, effective_time DESC, recorded_time DESC);
 
--- 3. Engineer roles (SELECT + INSERT only — no UPDATE/DELETE)
-DO $$
-DECLARE
-    r TEXT;
-BEGIN
-    FOREACH r IN ARRAY ARRAY['engineer1','engineer2','engineer3','engineer4']
-    LOOP
-        EXECUTE format('CREATE ROLE %I LOGIN PASSWORD %L', r, r || '_changeme');
-        EXECUTE format('GRANT CONNECT ON DATABASE %I TO %I', current_database(), r);
-        EXECUTE format('GRANT USAGE ON SCHEMA public TO %I', r);
-        EXECUTE format('GRANT SELECT, INSERT ON TABLE positions, change_events TO %I', r);
-        EXECUTE format('GRANT USAGE, SELECT ON SEQUENCE change_events_id_seq TO %I', r);
-    END LOOP;
-EXCEPTION WHEN duplicate_object THEN
-    RAISE NOTICE 'One or more roles already exist — skipping creation';
-END $$;
+-- 3. Engineer role (SELECT + INSERT only — no UPDATE/DELETE)
+--    Add more roles here as needed by copying the block below.
+-- CREATE ROLE engineer1 LOGIN PASSWORD 'changeme';
+GRANT CONNECT ON DATABASE "csh2-database" TO engineer1;
+GRANT USAGE ON SCHEMA public TO engineer1;
+GRANT SELECT, INSERT ON TABLE positions, change_events TO engineer1;
+GRANT USAGE, SELECT ON SEQUENCE change_events_id_seq TO engineer1;
 
 -- 4. Read-only role for downstream apps (simulator, etc.)
-DO $$
-BEGIN
-    CREATE ROLE app_readonly LOGIN PASSWORD 'readonly_changeme';
-EXCEPTION WHEN duplicate_object THEN
-    RAISE NOTICE 'app_readonly already exists';
-END $$;
-
+-- CREATE ROLE app_readonly LOGIN PASSWORD 'changeme';
 GRANT CONNECT ON DATABASE "csh2-database" TO app_readonly;
 GRANT USAGE ON SCHEMA public TO app_readonly;
 GRANT SELECT ON TABLE positions, change_events TO app_readonly;
