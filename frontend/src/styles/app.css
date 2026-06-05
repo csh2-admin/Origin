@@ -183,14 +183,16 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
+  padding: 1.5rem;
   overflow: auto;
   background: #fff;
   border-right: 1px solid var(--gray-200);
+  min-width: 0;
 }
 
 .side-panel {
-  width: 400px;
+  width: 360px;
+  flex-shrink: 0;
   overflow-y: auto;
   padding: 1.25rem;
   background: var(--gray-50);
@@ -323,77 +325,88 @@ textarea {
 
 /* ---- SVG diagram ---- */
 .diagram-svg {
-  max-width: 100%;
+  width: 100%;
   height: auto;
 }
 
 .diagram-svg .component {
   cursor: pointer;
-  transition: opacity 0.15s;
 }
 
 .diagram-svg .component:hover .comp-fill {
-  fill: var(--blue-100);
-  stroke: var(--blue-500);
+  fill: #237d8e;
 }
 
 .diagram-svg .component.selected .comp-fill {
-  fill: var(--blue-100);
+  fill: #237d8e;
+  stroke: #fff;
+  stroke-width: 3;
+  filter: drop-shadow(0 0 6px rgba(30, 120, 150, 0.5));
+}
+
+.diagram-svg .component:hover .housing-fill {
+  fill: #e8ecf0;
+}
+
+.diagram-svg .component.selected .housing-fill {
   stroke: var(--blue-700);
-  stroke-width: 2.5;
+  stroke-width: 3;
 }
 
 .diagram-svg .comp-fill {
-  fill: #fff;
-  stroke: var(--gray-700);
-  stroke-width: 1.5;
-  transition: fill 0.15s, stroke 0.15s;
+  fill: #1f6e7d;
+  stroke: none;
+  transition: fill 0.15s;
 }
 
 .diagram-svg .housing-fill {
-  fill: var(--gray-50);
-  stroke: var(--gray-700);
+  fill: #eef1f4;
+  stroke: #8899a6;
   stroke-width: 2;
+  stroke-dasharray: 8 4;
+  transition: fill 0.15s, stroke 0.15s;
+}
+
+.diagram-svg .housing-label {
+  font-size: 14px;
+  font-weight: 700;
+  fill: var(--gray-700);
+  text-anchor: middle;
+  pointer-events: none;
+  letter-spacing: 0.04em;
 }
 
 .diagram-svg .flow-line {
-  stroke: var(--blue-500);
+  stroke: #4a9ab8;
   stroke-width: 2;
   fill: none;
 }
 
 .diagram-svg .flow-arrow {
-  fill: var(--blue-500);
+  fill: #4a9ab8;
 }
 
 .diagram-svg .comp-label {
-  font-size: 11px;
-  font-weight: 600;
-  fill: var(--gray-900);
+  font-size: 13px;
+  font-weight: 700;
+  fill: #fff;
   text-anchor: middle;
   pointer-events: none;
 }
 
 .diagram-svg .comp-part-label {
   font-size: 9px;
-  fill: var(--gray-500);
+  fill: rgba(255, 255, 255, 0.7);
   font-family: "Consolas", "Monaco", monospace;
   text-anchor: middle;
   pointer-events: none;
 }
 
 .diagram-svg .section-label {
-  font-size: 10px;
-  fill: var(--gray-500);
+  font-size: 12px;
+  font-weight: 600;
+  fill: var(--gray-700);
   text-anchor: middle;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-}
-
-.diagram-svg .title-label {
-  font-size: 14px;
-  font-weight: 700;
-  fill: var(--gray-900);
-  text-anchor: middle;
-  letter-spacing: 0.06em;
 }

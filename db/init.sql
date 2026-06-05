@@ -9,11 +9,14 @@ CREATE TABLE IF NOT EXISTS positions (
 );
 
 INSERT INTO positions (name, display_name, description) VALUES
-    ('pump_housing',      'Pump Housing',      'Main pump body assembly'),
-    ('icv_flapper',       'ICV Flapper',       'Inlet check valve flapper'),
-    ('dcv_poppet',        'DCV Poppet',        'Discharge check valve poppet'),
-    ('lp_seal_group',     'LP Seal Group',     'Low-pressure seal group'),
-    ('hp_seal_position_1','HP Seal Position 1', 'High-pressure seal position 1')
+    ('pump_housing',  'Pump Housing',  'Main pump body assembly'),
+    ('icv_flapper',   'ICV Flapper',   'Inlet check valve flapper'),
+    ('icv_spring',    'ICV Spring',    'Inlet check valve spring'),
+    ('dcv_poppet',    'DCV Poppet',    'Discharge check valve poppet'),
+    ('dcv_spring',    'DCV Spring',    'Discharge check valve spring'),
+    ('lp_seal_group', 'LP Seal Group', 'Low-pressure seal group'),
+    ('hp_seal_group', 'HP Seal Group', 'High-pressure seal group'),
+    ('piston',        'Piston',        'Pump piston assembly')
 ON CONFLICT (name) DO NOTHING;
 
 -- 2. Append-only change event log

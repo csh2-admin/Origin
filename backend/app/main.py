@@ -9,6 +9,6 @@ from .routes import bp
 
 app = Flask(__name__)
 
-CORS(app, supports_credentials=True, origins=["http://localhost:5173"])
+CORS(app, supports_credentials=True, origins=["http://localhost:5173", "http://localhost:5174"])
 
 app.register_blueprint(bp)
