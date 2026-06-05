@@ -2,19 +2,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from flask import Flask
+from flask_cors import CORS
 
-from .routes import router
+from .routes import bp
 
-app = FastAPI(title="Asset Model Tracker")
+app = Flask(__name__)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+CORS(app, supports_credentials=True, origins=["http://localhost:5173"])
 
-app.include_router(router)
+app.register_blueprint(bp)
