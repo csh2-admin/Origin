@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, make_response, request
 
-from .database import create_session, delete_session, require_db
+from .database import create_session, delete_session, require_db, _dict_row, _dict_rows
 
 bp = Blueprint("api", __name__)
 
@@ -44,7 +44,9 @@ def logout():
 @bp.route("/me")
 @require_db
 def me(conn):
-    user = conn.execute("SELECT session_user").fetchone()["session_user"]
+    cur = conn.cursor()
+    cur.execute("SELECT session_user")
+    user = cur.fetchone()[0]
     return jsonify({"user": user})
 
 
@@ -57,7 +59,8 @@ def get_state(conn):
     else:
         ts = datetime.now(timezone.utc)
 
-    rows = conn.execute(
+    cur = conn.cursor()
+    cur.execute(
         """
         SELECT DISTINCT ON (p.name)
             p.name         AS position,
@@ -74,14 +77,15 @@ def get_state(conn):
         ORDER BY p.name, e.effective_time DESC, e.recorded_time DESC
         """,
         (ts,),
-    ).fetchall()
-    return jsonify([_serialize(r) for r in rows])
+    )
+    return jsonify([_serialize(r) for r in _dict_rows(cur)])
 
 
 @bp.route("/component/<position>/history")
 @require_db
 def get_history(position, conn):
-    rows = conn.execute(
+    cur = conn.cursor()
+    cur.execute(
         """
         SELECT id, effective_time, recorded_time, position,
                removed_part_number, removed_part_revision, removed_part_serial,
@@ -92,15 +96,16 @@ def get_history(position, conn):
         ORDER BY effective_time DESC, recorded_time DESC
         """,
         (position,),
-    ).fetchall()
-    return jsonify([_serialize(r) for r in rows])
+    )
+    return jsonify([_serialize(r) for r in _dict_rows(cur)])
 
 
 @bp.route("/change", methods=["POST"])
 @require_db
 def post_change(conn):
     body = request.get_json()
-    row = conn.execute(
+    cur = conn.cursor()
+    cur.execute(
         """
         INSERT INTO change_events (
             effective_time, position,
@@ -124,6 +129,7 @@ def post_change(conn):
             body.get("installed_part_serial"),
             body.get("note"),
         ),
-    ).fetchone()
+    )
+    row = _dict_row(cur)
     conn.commit()
     return jsonify(_serialize(row))
