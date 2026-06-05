@@ -290,6 +290,27 @@ textarea {
   margin-bottom: 1rem;
 }
 
+.btn-revert {
+  background: none;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius);
+  color: var(--red-600);
+  font-size: 0.72rem;
+  padding: 0.2rem 0.5rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-revert:hover {
+  background: #fef2f2;
+  border-color: var(--red-600);
+}
+
+.btn-revert:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 /* ---- Change form ---- */
 .change-form {
   background: #fff;

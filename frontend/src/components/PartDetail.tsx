@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getHistory } from "../api/client";
+import { getHistory, postChange } from "../api/client";
 import type { ChangeEvent, PositionState } from "../types";
 import { ChangeForm } from "./ChangeForm";
 
@@ -26,6 +26,7 @@ function partStr(num: string | null, rev: string | null, serial: string | null):
 export function PartDetail({ position, onRefresh }: Props) {
   const [history, setHistory] = useState<ChangeEvent[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [reverting, setReverting] = useState<number | null>(null);
 
   useEffect(() => {
     loadHistory();
@@ -42,6 +43,30 @@ export function PartDetail({ position, onRefresh }: Props) {
     setShowForm(false);
     loadHistory();
     onRefresh();
+  }
+
+  async function handleRevert(evt: ChangeEvent) {
+    if (!confirm(`Revert this change? A new correction entry will be created.`)) return;
+    setReverting(evt.id);
+    try {
+      await postChange({
+        position: evt.position,
+        effective_time: evt.effective_time,
+        removed_part_number: evt.installed_part_number || undefined,
+        removed_part_revision: evt.installed_part_revision || undefined,
+        removed_part_serial: evt.installed_part_serial || undefined,
+        installed_part_number: evt.removed_part_number || undefined,
+        installed_part_revision: evt.removed_part_revision || undefined,
+        installed_part_serial: evt.removed_part_serial || undefined,
+        note: `Correction: reverted change #${evt.id}`,
+      });
+      loadHistory();
+      onRefresh();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to revert");
+    } finally {
+      setReverting(null);
+    }
   }
 
   return (
@@ -104,6 +129,7 @@ export function PartDetail({ position, onRefresh }: Props) {
                 <th>Installed</th>
                 <th>By</th>
                 <th>Note</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -118,6 +144,16 @@ export function PartDetail({ position, onRefresh }: Props) {
                   </td>
                   <td>{evt.changed_by}</td>
                   <td className="note-cell" title={evt.note ?? ""}>{evt.note ?? ""}</td>
+                  <td>
+                    <button
+                      className="btn-revert"
+                      title="Revert this change"
+                      disabled={reverting === evt.id}
+                      onClick={() => handleRevert(evt)}
+                    >
+                      {reverting === evt.id ? "..." : "Revert"}
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>

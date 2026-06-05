@@ -106,12 +106,12 @@ export function Diagram({ state, selected, onSelect }: Props) {
         state={state} selected={selected} onSelect={onSelect} />
 
       {/* ICV Flapper — right side, upper */}
-      <Comp id="icv_flapper" x={635} y={205} w={130} h={80}
+      <Comp id="icv_flapper" x={675} y={205} w={100} h={80}
         lines={["ICV", "FLAPPER"]}
         state={state} selected={selected} onSelect={onSelect} />
 
       {/* ICV Spring — right side, lower */}
-      <Comp id="icv_spring" x={635} y={320} w={130} h={90}
+      <Comp id="icv_spring" x={675} y={345} w={100} h={120}
         lines={["ICV", "SPRING"]}
         state={state} selected={selected} onSelect={onSelect} />
 
