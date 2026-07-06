@@ -1,4 +1,4 @@
-import type { ChangeEvent, ChangePayload, PositionState } from "../types";
+import type { ChangeEvent, ChangePayload, PartCatalogEntry, PositionState } from "../types";
 
 const BASE = import.meta.env.DEV ? "/api" : "";
 
@@ -42,6 +42,11 @@ export async function getState(at?: string) {
 
 export async function getHistory(position: string) {
   return request<ChangeEvent[]>(`/component/${encodeURIComponent(position)}/history`);
+}
+
+export async function getPartsCatalog(position?: string) {
+  const qs = position ? `?position=${encodeURIComponent(position)}` : "";
+  return request<PartCatalogEntry[]>(`/parts-catalog${qs}`);
 }
 
 export async function postChange(payload: ChangePayload) {

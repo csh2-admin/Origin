@@ -71,7 +71,8 @@ label {
 input[type="text"],
 input[type="password"],
 input[type="datetime-local"],
-textarea {
+textarea,
+select {
   width: 100%;
   padding: 0.5rem 0.65rem;
   border: 1px solid var(--gray-300);
@@ -80,10 +81,12 @@ textarea {
   font-family: inherit;
   outline: none;
   transition: border-color 0.15s;
+  background: #fff;
 }
 
 input:focus,
-textarea:focus {
+textarea:focus,
+select:focus {
   border-color: var(--blue-500);
   box-shadow: 0 0 0 3px var(--blue-100);
 }
@@ -430,4 +433,25 @@ textarea {
   text-anchor: middle;
   text-transform: uppercase;
   letter-spacing: 0.1em;
+}
+
+.diagram-svg .component.disabled .comp-fill {
+  fill: #94a3b8;
+}
+
+.diagram-svg .component.disabled .comp-label,
+.diagram-svg .component.disabled .comp-part-label {
+  fill: rgba(255, 255, 255, 0.5);
+}
+
+.diagram-svg .component.disabled {
+  cursor: default;
+}
+
+.diagram-svg .component.disabled:hover .comp-fill {
+  fill: #94a3b8;
+}
+
+.diagram-svg .dcv-toggle {
+  cursor: pointer;
 }

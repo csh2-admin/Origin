@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { getMe, getState, logout } from "./api/client";
+import { getMe, getState, logout, postChange } from "./api/client";
 import { Diagram } from "./components/Diagram";
 import { Login } from "./components/Login";
 import { PartDetail } from "./components/PartDetail";
@@ -41,6 +41,21 @@ export function App() {
   if (checking) return null;
   if (!user) return <Login onLogin={(u) => setUser(u)} />;
 
+  async function handleRemoveInlineDcv() {
+    const dcv = state.find((s) => s.position === "inline_dcv");
+    if (!dcv?.part_number) return;
+    if (!confirm("Remove the in-line DCV from the system?")) return;
+    await postChange({
+      position: "inline_dcv",
+      effective_time: new Date().toISOString(),
+      removed_part_number: dcv.part_number,
+      removed_part_revision: dcv.part_revision ?? undefined,
+      removed_part_serial: dcv.part_serial ?? undefined,
+      note: "In-line DCV removed from system",
+    });
+    await loadState();
+  }
+
   const selectedPosition = state.find((s) => s.position === selected);
 
   return (
@@ -54,7 +69,7 @@ export function App() {
       </header>
       <div className="main-layout">
         <div className="diagram-pane">
-          <Diagram state={state} selected={selected} onSelect={setSelected} />
+          <Diagram state={state} selected={selected} onSelect={setSelected} onRemoveInlineDcv={handleRemoveInlineDcv} />
         </div>
         <div className="side-panel">
           {selectedPosition ? (

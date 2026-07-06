@@ -1,6 +1,6 @@
-import { FormEvent, useState } from "react";
-import { postChange } from "../api/client";
-import type { PositionState } from "../types";
+import { FormEvent, useEffect, useState } from "react";
+import { getPartsCatalog, postChange } from "../api/client";
+import type { PartCatalogEntry, PositionState } from "../types";
 
 interface Props {
   position: PositionState;
@@ -15,6 +15,8 @@ function toLocalISO(): string {
 }
 
 export function ChangeForm({ position, onSaved, onCancel }: Props) {
+  const [catalog, setCatalog] = useState<PartCatalogEntry[]>([]);
+  const [selectedPart, setSelectedPart] = useState("");
   const [effectiveTime, setEffectiveTime] = useState(toLocalISO());
   const [installedNumber, setInstalledNumber] = useState("");
   const [installedRevision, setInstalledRevision] = useState("");
@@ -22,6 +24,23 @@ export function ChangeForm({ position, onSaved, onCancel }: Props) {
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    getPartsCatalog(position.position)
+      .then(setCatalog)
+      .catch(() => setCatalog([]));
+  }, [position.position]);
+
+  function handlePartSelect(value: string) {
+    setSelectedPart(value);
+    if (value === "__custom__") {
+      setInstalledNumber("");
+    } else if (value) {
+      setInstalledNumber(value);
+    } else {
+      setInstalledNumber("");
+    }
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -47,6 +66,8 @@ export function ChangeForm({ position, onSaved, onCancel }: Props) {
     }
   }
 
+  const isCustom = selectedPart === "__custom__";
+
   return (
     <form className="change-form" onSubmit={handleSubmit}>
       <h3>Log Component Change</h3>
@@ -61,16 +82,45 @@ export function ChangeForm({ position, onSaved, onCancel }: Props) {
         </div>
       )}
 
-      <div className="form-row">
-        <div className="field">
-          <label>New Part Number</label>
+      <div className="field">
+        <label>New Part</label>
+        {catalog.length > 0 ? (
+          <select
+            className="part-select"
+            value={selectedPart}
+            onChange={(e) => handlePartSelect(e.target.value)}
+          >
+            <option value="">— Select a part —</option>
+            {catalog.map((p) => (
+              <option key={p.part_number} value={p.part_number}>
+                {p.part_number}: {p.description || p.part_number}
+              </option>
+            ))}
+            <option value="__custom__">Other (enter manually)</option>
+          </select>
+        ) : (
           <input
             type="text"
             value={installedNumber}
             onChange={(e) => setInstalledNumber(e.target.value)}
-            placeholder="e.g. PMP-4521"
+            placeholder="e.g. 20B102Z"
+          />
+        )}
+      </div>
+
+      {isCustom && (
+        <div className="field">
+          <label>Part Number</label>
+          <input
+            type="text"
+            value={installedNumber}
+            onChange={(e) => setInstalledNumber(e.target.value)}
+            placeholder="e.g. 20B102Z"
           />
         </div>
+      )}
+
+      <div className="form-row">
         <div className="field">
           <label>Revision</label>
           <input
@@ -80,16 +130,15 @@ export function ChangeForm({ position, onSaved, onCancel }: Props) {
             placeholder="e.g. B"
           />
         </div>
-      </div>
-
-      <div className="field">
-        <label>Serial Number (optional)</label>
-        <input
-          type="text"
-          value={installedSerial}
-          onChange={(e) => setInstalledSerial(e.target.value)}
-          placeholder="e.g. SN-00142"
-        />
+        <div className="field">
+          <label>Serial Number</label>
+          <input
+            type="text"
+            value={installedSerial}
+            onChange={(e) => setInstalledSerial(e.target.value)}
+            placeholder="e.g. SN-00142"
+          />
+        </div>
       </div>
 
       <div className="field">

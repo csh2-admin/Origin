@@ -4,6 +4,7 @@ interface Props {
   state: PositionState[];
   selected: string | null;
   onSelect: (position: string) => void;
+  onRemoveInlineDcv: () => void;
 }
 
 function partLabel(s: PositionState | undefined): string {
@@ -18,18 +19,19 @@ function getPos(state: PositionState[], pos: string) {
 }
 
 function Comp({
-  id, x, y, w, h, lines, state, selected, onSelect,
+  id, x, y, w, h, lines, state, selected, onSelect, disabled,
 }: {
   id: string; x: number; y: number; w: number; h: number;
   lines: string[]; state: PositionState[];
   selected: string | null; onSelect: (p: string) => void;
+  disabled?: boolean;
 }) {
   const totalH = lines.length * 19;
   const startY = y + h / 2 - totalH / 2 + 14;
 
   return (
     <g
-      className={`component${selected === id ? " selected" : ""}`}
+      className={`component${selected === id ? " selected" : ""}${disabled ? " disabled" : ""}`}
       onClick={(e) => { e.stopPropagation(); onSelect(id); }}
     >
       <rect className="comp-fill" x={x} y={y} width={w} height={h} rx={4} />
@@ -39,29 +41,56 @@ function Comp({
         </text>
       ))}
       <text x={x + w / 2} y={y + h - 8} className="comp-part-label">
-        {partLabel(getPos(state, id))}
+        {disabled ? "REMOVED" : partLabel(getPos(state, id))}
       </text>
     </g>
   );
 }
 
-export function Diagram({ state, selected, onSelect }: Props) {
+export function Diagram({ state, selected, onSelect, onRemoveInlineDcv }: Props) {
+  const dcvState = getPos(state, "inline_dcv");
+  const dcvInstalled = !!(dcvState && dcvState.part_number);
+
+  function handleToggle(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (dcvInstalled) {
+      onRemoveInlineDcv();
+    } else {
+      onSelect("inline_dcv");
+    }
+  }
+
   return (
     <svg
       className="diagram-svg"
-      viewBox="0 0 1100 660"
+      viewBox="0 0 1200 750"
       xmlns="http://www.w3.org/2000/svg"
     >
       {/* ---- Flow lines ---- */}
-      {/* Discharge — vertical pipe going up from housing top */}
-      <line x1="515" y1="75" x2="515" y2="22" className="flow-line" />
+      <line x1="515" y1="170" x2="515" y2="22" className="flow-line" />
       <polygon points="509,28 521,28 515,14" className="flow-arrow" />
       <text x="515" y="8" className="section-label">DISCHARGE</text>
 
-      {/* Suction — horizontal pipe entering from right */}
-      <line x1="790" y1="290" x2="1070" y2="290" className="flow-line" />
-      <polygon points="798,284 798,296 786,290" className="flow-arrow" />
-      <text x="970" y="278" className="section-label">SUCTION</text>
+      <line x1="930" y1="485" x2="1170" y2="485" className="flow-line" />
+      <polygon points="938,479 938,491 926,485" className="flow-arrow" />
+      <text x="1080" y="473" className="section-label">SUCTION</text>
+
+      {/* ---- In-Line DCV (above housing, toggleable) ---- */}
+      <Comp id="inline_dcv" x={455} y={50} w={120} h={80}
+        lines={["IN-LINE", "DCV"]}
+        state={state} selected={selected} onSelect={onSelect}
+        disabled={!dcvInstalled} />
+
+      {/* Toggle switch for In-Line DCV */}
+      <g className="dcv-toggle" onClick={handleToggle}>
+        <rect x={590} y={72} width={52} height={26} rx={13}
+          fill={dcvInstalled ? "#1f6e7d" : "#94a3b8"} />
+        <circle cx={dcvInstalled ? 629 : 603} cy={85} r={10}
+          fill="#fff" />
+        <text x={650} y={90} fontSize="10" fill="#64748b" fontWeight="600">
+          {dcvInstalled ? "Installed" : "Removed"}
+        </text>
+      </g>
 
       {/* ---- Pump Housing (outer container, clickable) ---- */}
       <g
@@ -70,63 +99,53 @@ export function Diagram({ state, selected, onSelect }: Props) {
       >
         <rect
           className="housing-fill"
-          x={50} y={75} width={740} height={530} rx={3}
+          x={50} y={170} width={880} height={540} rx={3}
         />
-        <text x={420} y={98} className="housing-label">PUMP HOUSING</text>
-        <text x={420} y={592} className="comp-part-label">
+        <text x={160} y={200} className="housing-label" textAnchor="start">PUMP HOUSING</text>
+        <text x={490} y={698} className="comp-part-label">
           {partLabel(getPos(state, "pump_housing"))}
         </text>
       </g>
 
       {/* ---- Internal components ---- */}
 
-      {/* LP Seal Group — left side, mid height */}
-      <Comp id="lp_seal_group" x={95} y={210} w={180} h={90}
+      <Comp id="lp_seal_group" x={95} y={310} w={180} h={80}
         lines={["LP SEAL GROUP"]}
         state={state} selected={selected} onSelect={onSelect} />
 
-      {/* DCV Spring — upper center-right */}
-      <Comp id="dcv_spring" x={430} y={115} w={170} h={80}
+      <Comp id="dcv_spring" x={380} y={215} w={170} h={80}
         lines={["DCV", "SPRING"]}
         state={state} selected={selected} onSelect={onSelect} />
 
-      {/* DCV Poppet — below DCV Spring */}
-      <Comp id="dcv_poppet" x={430} y={210} w={170} h={80}
+      <Comp id="dcv_poppet" x={380} y={310} w={170} h={80}
         lines={["DCV", "POPPET"]}
         state={state} selected={selected} onSelect={onSelect} />
 
-      {/* Piston — large, bottom-left spanning most of the width */}
-      <Comp id="piston" x={95} y={345} w={390} h={120}
+      <Comp id="piston" x={95} y={425} w={390} h={120}
         lines={["PISTON"]}
         state={state} selected={selected} onSelect={onSelect} />
 
-      {/* HP Seal Group — right of piston, same row */}
-      <Comp id="hp_seal_group" x={500} y={345} w={155} h={120}
-        lines={["HP SEAL", "GROUP"]}
-        state={state} selected={selected} onSelect={onSelect} />
-
-      {/* ICV Flapper — right side, upper */}
-      <Comp id="icv_flapper" x={675} y={205} w={100} h={80}
+      <Comp id="icv_flapper" x={500} y={425} w={120} h={55}
         lines={["ICV", "FLAPPER"]}
         state={state} selected={selected} onSelect={onSelect} />
 
-      {/* ICV Spring — right side, lower */}
-      <Comp id="icv_spring" x={675} y={345} w={100} h={120}
+      <Comp id="icv_spring" x={500} y={490} w={120} h={55}
         lines={["ICV", "SPRING"]}
         state={state} selected={selected} onSelect={onSelect} />
 
-      {/* Retaining Ring — bottom center-left */}
-      <Comp id="retaining_ring" x={430} y={490} w={155} h={90}
-        lines={["RETAINING", "RING"]}
+      <Comp id="head_block" x={635} y={425} w={130} h={120}
+        lines={["CYLINDER", "HEAD BLOCK"]}
         state={state} selected={selected} onSelect={onSelect} />
 
-      {/* Head Block — bottom center-right */}
-      <Comp id="head_block" x={620} y={490} w={155} h={90}
-        lines={["HEAD", "BLOCK"]}
+      <Comp id="retaining_ring" x={775} y={425} w={130} h={120}
+        lines={["RETAINER", "RING"]}
         state={state} selected={selected} onSelect={onSelect} />
 
-      {/* Footer */}
-      <text x={550} y={645} className="section-label" fontSize="9">
+      <Comp id="hp_seal_group" x={380} y={580} w={170} h={90}
+        lines={["HP SEAL", "GROUP"]}
+        state={state} selected={selected} onSelect={onSelect} />
+
+      <text x={550} y={740} className="section-label" fontSize="9">
         Click a component to view details and log changes
       </text>
     </svg>

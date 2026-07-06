@@ -23,6 +23,12 @@ export interface ChangeEvent {
   note: string | null;
 }
 
+export interface PartCatalogEntry {
+  part_number: string;
+  position: string;
+  description: string | null;
+}
+
 export interface ChangePayload {
   position: string;
   effective_time: string;

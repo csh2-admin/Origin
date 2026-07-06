@@ -81,6 +81,21 @@ def get_state(conn):
     return jsonify([_serialize(r) for r in _dict_rows(cur)])
 
 
+@bp.route("/parts-catalog")
+@require_db
+def parts_catalog(conn):
+    position = request.args.get("position")
+    cur = conn.cursor()
+    if position:
+        cur.execute(
+            "SELECT part_number, position, description FROM parts_catalog WHERE position = %s ORDER BY part_number",
+            (position,),
+        )
+    else:
+        cur.execute("SELECT part_number, position, description FROM parts_catalog ORDER BY position, part_number")
+    return jsonify([_serialize(r) for r in _dict_rows(cur)])
+
+
 @bp.route("/component/<position>/history")
 @require_db
 def get_history(position, conn):
