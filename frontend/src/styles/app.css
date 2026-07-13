@@ -194,7 +194,7 @@ textarea {
 }
 
 .side-panel {
-  width: 360px;
+  width: 520px;
   flex-shrink: 0;
   overflow-y: auto;
   padding: 1.25rem;
@@ -287,6 +287,45 @@ textarea {
   white-space: nowrap;
 }
 
+.usage-stats {
+  background: #fff;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.usage-stats .label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gray-500);
+  margin-bottom: 0.5rem;
+}
+
+.usage-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
+.usage-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.usage-value {
+  font-family: "Consolas", "Monaco", monospace;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--gray-900);
+}
+
+.usage-label {
+  font-size: 0.7rem;
+  color: var(--gray-500);
+}
+
 .actions-bar {
   display: flex;
   gap: 0.5rem;
@@ -312,6 +351,141 @@ textarea {
 .btn-revert:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+/* ---- Photos ---- */
+.photos-section {
+  margin-bottom: 1rem;
+}
+
+.photos-section h3 {
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+.photo-upload {
+  margin-bottom: 0.75rem;
+}
+
+.photo-upload-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.photo-upload-row select {
+  width: auto;
+  flex-shrink: 0;
+}
+
+.photo-upload-row input[type="text"] {
+  flex: 1;
+}
+
+.photo-upload-btn {
+  cursor: pointer;
+  text-align: center;
+  font-size: 0.82rem;
+}
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.photo-card {
+  background: #fff;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.photo-card img {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  cursor: pointer;
+  display: block;
+}
+
+.photo-card img:hover {
+  opacity: 0.85;
+}
+
+.photo-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.3rem 0.4rem;
+  font-size: 0.7rem;
+}
+
+.photo-type-badge {
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  font-weight: 600;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.photo-type-badge.before {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.photo-type-badge.after {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.photo-type-badge.inspection {
+  background: var(--blue-100);
+  color: var(--blue-700);
+}
+
+.photo-date {
+  color: var(--gray-500);
+}
+
+.photo-caption {
+  padding: 0 0.4rem 0.3rem;
+  font-size: 0.72rem;
+  color: var(--gray-700);
+  font-style: italic;
+}
+
+.photo-delete {
+  margin: 0 0.4rem 0.3rem;
+  font-size: 0.65rem;
+}
+
+.photo-filetypes {
+  font-size: 0.7rem;
+  color: var(--gray-500);
+  margin-top: 0.25rem;
+  font-style: italic;
+}
+
+/* ---- Lightbox ---- */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  cursor: pointer;
+}
+
+.lightbox img {
+  max-width: 90vw;
+  max-height: 90vh;
+  border-radius: 4px;
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.5);
 }
 
 /* ---- Change form ---- */
@@ -454,4 +628,141 @@ textarea {
 
 .diagram-svg .dcv-toggle {
   cursor: pointer;
+}
+
+.diagram-svg .comp-cycle-label {
+  font-size: 16px;
+  fill: rgba(255, 255, 255, 0.55);
+  font-family: "Consolas", "Monaco", monospace;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+/* ---- Time-travel ---- */
+.time-travel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.time-travel label {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.8rem;
+  margin-bottom: 0;
+}
+
+.time-travel input[type="datetime-local"] {
+  width: auto;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.time-travel input[type="datetime-local"]:focus {
+  border-color: var(--blue-500);
+  box-shadow: none;
+}
+
+.btn-now {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.25rem 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-now:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.time-travel-banner {
+  background: #fef3c7;
+  color: #92400e;
+  text-align: center;
+  padding: 0.4rem 1rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border-bottom: 1px solid #fde68a;
+}
+
+/* ---- Triplex overview ---- */
+.diagram-svg .pump-head {
+  cursor: pointer;
+}
+
+.diagram-svg .pump-head-fill {
+  fill: #1f6e7d;
+  stroke: none;
+  transition: fill 0.15s;
+}
+
+.diagram-svg .pump-head:hover .pump-head-fill {
+  fill: #237d8e;
+}
+
+.diagram-svg .pump-head-label {
+  font-size: 18px;
+  font-weight: 700;
+  fill: #fff;
+  text-anchor: middle;
+  pointer-events: none;
+  letter-spacing: 0.06em;
+}
+
+.diagram-svg .pump-head-hint {
+  font-size: 11px;
+  fill: rgba(255, 255, 255, 0.55);
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+/* ---- Diagram nav bar ---- */
+.diagram-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  margin-bottom: 0.25rem;
+  width: 100%;
+}
+
+.btn-back {
+  background: var(--gray-200);
+  color: var(--gray-700);
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.35rem 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-back:hover {
+  background: var(--gray-300);
+}
+
+.diagram-nav-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--gray-700);
+  letter-spacing: 0.02em;
+}
+
+.diagram-pane:has(.diagram-nav) {
+  flex-direction: column;
+  align-items: stretch;
+  padding-top: 0.75rem;
+}
+
+.diagram-pane:has(.diagram-nav) .diagram-svg {
+  flex: 1;
 }

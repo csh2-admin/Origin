@@ -1,4 +1,4 @@
-import type { ChangeEvent, ChangePayload, PartCatalogEntry, PositionState } from "../types";
+import type { ChangeEvent, ChangePayload, ComponentPhoto, PartCatalogEntry, PositionState, UsageStats } from "../types";
 
 const BASE = import.meta.env.DEV ? "/api" : "";
 
@@ -49,9 +49,55 @@ export async function getPartsCatalog(position?: string) {
   return request<PartCatalogEntry[]>(`/parts-catalog${qs}`);
 }
 
+export async function getAllUsage() {
+  return request<Record<string, { est_cycles: number; runtime_hours: number }>>("/usage");
+}
+
+export async function getUsage(position: string) {
+  return request<UsageStats>(`/component/${encodeURIComponent(position)}/usage`);
+}
+
 export async function postChange(payload: ChangePayload) {
   return request<ChangeEvent>("/change", {
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+export async function getPhotos(position: string) {
+  return request<ComponentPhoto[]>(`/component/${encodeURIComponent(position)}/photos`);
+}
+
+export async function uploadPhoto(
+  position: string,
+  file: File,
+  photoType: string,
+  caption: string,
+  changeEventId?: number,
+) {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("photo_type", photoType);
+  form.append("caption", caption);
+  if (changeEventId != null) form.append("change_event_id", String(changeEventId));
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
+  const res = await fetch(`${BASE}/component/${encodeURIComponent(position)}/photos`, {
+    method: "POST",
+    credentials: "include",
+    signal: controller.signal,
+    body: form,
+  });
+  clearTimeout(timeout);
+  if (res.status === 401) throw new Error("UNAUTHORIZED");
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || res.statusText);
+  }
+  return res.json() as Promise<ComponentPhoto>;
+}
+
+export async function deletePhoto(photoId: number) {
+  return request<{ status: string }>(`/photo/${photoId}`, { method: "DELETE" });
 }

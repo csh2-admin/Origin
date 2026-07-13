@@ -29,6 +29,26 @@ export interface PartCatalogEntry {
   description: string | null;
 }
 
+export interface UsageStats {
+  installed_since: string | null;
+  runtime_hours: number | null;
+  idle_hours: number | null;
+  est_cycles: number | null;
+  avg_cpm: number | null;
+  data_points: number;
+}
+
+export interface ComponentPhoto {
+  id: number;
+  position: string;
+  change_event_id: number | null;
+  photo_url: string;
+  caption: string | null;
+  photo_type: "before" | "after" | "inspection";
+  taken_at: string;
+  uploaded_by: string;
+}
+
 export interface ChangePayload {
   position: string;
   effective_time: string;

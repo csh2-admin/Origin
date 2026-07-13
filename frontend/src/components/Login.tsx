@@ -28,7 +28,7 @@ export function Login({ onLogin }: Props) {
   return (
     <div className="login-wrapper">
       <form className="login-card" onSubmit={handleSubmit}>
-        <h1>Asset Model Tracker</h1>
+        <h1>CSH2 Asset Model</h1>
         <p>Sign in with your database credentials</p>
         <div className="field">
           <label htmlFor="username">Username</label>

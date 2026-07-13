@@ -1,10 +1,14 @@
 import type { PositionState } from "../types";
 
+type UsageMap = Record<string, { est_cycles: number; runtime_hours: number }>;
+
 interface Props {
   state: PositionState[];
   selected: string | null;
   onSelect: (position: string) => void;
   onRemoveInlineDcv: () => void;
+  usage: UsageMap;
+  readOnly?: boolean;
 }
 
 function partLabel(s: PositionState | undefined): string {
@@ -14,20 +18,30 @@ function partLabel(s: PositionState | undefined): string {
   return lbl;
 }
 
+function cycleLabel(usage: UsageMap, id: string): string {
+  const u = usage[id];
+  if (!u || !u.est_cycles) return "";
+  const cycles = u.est_cycles;
+  if (cycles >= 1_000_000) return `${(cycles / 1_000_000).toFixed(1)}M cycles`;
+  if (cycles >= 1_000) return `${(cycles / 1_000).toFixed(1)}K cycles`;
+  return `${Math.round(cycles)} cycles`;
+}
+
 function getPos(state: PositionState[], pos: string) {
   return state.find((s) => s.position === pos);
 }
 
 function Comp({
-  id, x, y, w, h, lines, state, selected, onSelect, disabled,
+  id, x, y, w, h, lines, state, selected, onSelect, disabled, usage,
 }: {
   id: string; x: number; y: number; w: number; h: number;
   lines: string[]; state: PositionState[];
   selected: string | null; onSelect: (p: string) => void;
-  disabled?: boolean;
+  disabled?: boolean; usage: UsageMap;
 }) {
   const totalH = lines.length * 19;
-  const startY = y + h / 2 - totalH / 2 + 14;
+  const startY = y + h / 2 - totalH / 2 + 10;
+  const cl = cycleLabel(usage, id);
 
   return (
     <g
@@ -40,18 +54,24 @@ function Comp({
           {line}
         </text>
       ))}
-      <text x={x + w / 2} y={y + h - 8} className="comp-part-label">
+      <text x={x + w / 2} y={y + h - (cl ? 24 : 8)} className="comp-part-label">
         {disabled ? "REMOVED" : partLabel(getPos(state, id))}
       </text>
+      {cl && !disabled && (
+        <text x={x + w / 2} y={y + h - 6} className="comp-cycle-label">
+          {cl}
+        </text>
+      )}
     </g>
   );
 }
 
-export function Diagram({ state, selected, onSelect, onRemoveInlineDcv }: Props) {
+export function Diagram({ state, selected, onSelect, onRemoveInlineDcv, usage, readOnly }: Props) {
   const dcvState = getPos(state, "inline_dcv");
   const dcvInstalled = !!(dcvState && dcvState.part_number);
 
   function handleToggle(e: React.MouseEvent) {
+    if (readOnly) return;
     e.stopPropagation();
     if (dcvInstalled) {
       onRemoveInlineDcv();
@@ -79,18 +99,20 @@ export function Diagram({ state, selected, onSelect, onRemoveInlineDcv }: Props)
       <Comp id="inline_dcv" x={455} y={50} w={120} h={80}
         lines={["IN-LINE", "DCV"]}
         state={state} selected={selected} onSelect={onSelect}
-        disabled={!dcvInstalled} />
+        disabled={!dcvInstalled} usage={usage} />
 
       {/* Toggle switch for In-Line DCV */}
-      <g className="dcv-toggle" onClick={handleToggle}>
-        <rect x={590} y={72} width={52} height={26} rx={13}
-          fill={dcvInstalled ? "#1f6e7d" : "#94a3b8"} />
-        <circle cx={dcvInstalled ? 629 : 603} cy={85} r={10}
-          fill="#fff" />
-        <text x={650} y={90} fontSize="10" fill="#64748b" fontWeight="600">
-          {dcvInstalled ? "Installed" : "Removed"}
-        </text>
-      </g>
+      {!readOnly && (
+        <g className="dcv-toggle" onClick={handleToggle}>
+          <rect x={590} y={72} width={52} height={26} rx={13}
+            fill={dcvInstalled ? "#1f6e7d" : "#94a3b8"} />
+          <circle cx={dcvInstalled ? 629 : 603} cy={85} r={10}
+            fill="#fff" />
+          <text x={650} y={90} fontSize="10" fill="#64748b" fontWeight="600">
+            {dcvInstalled ? "Installed" : "Removed"}
+          </text>
+        </g>
+      )}
 
       {/* ---- Pump Housing (outer container, clickable) ---- */}
       <g
@@ -111,39 +133,39 @@ export function Diagram({ state, selected, onSelect, onRemoveInlineDcv }: Props)
 
       <Comp id="lp_seal_group" x={95} y={310} w={180} h={80}
         lines={["LP SEAL GROUP"]}
-        state={state} selected={selected} onSelect={onSelect} />
+        state={state} selected={selected} onSelect={onSelect} usage={usage} />
 
       <Comp id="dcv_spring" x={380} y={215} w={170} h={80}
         lines={["DCV", "SPRING"]}
-        state={state} selected={selected} onSelect={onSelect} />
+        state={state} selected={selected} onSelect={onSelect} usage={usage} />
 
       <Comp id="dcv_poppet" x={380} y={310} w={170} h={80}
         lines={["DCV", "POPPET"]}
-        state={state} selected={selected} onSelect={onSelect} />
+        state={state} selected={selected} onSelect={onSelect} usage={usage} />
 
       <Comp id="piston" x={95} y={425} w={390} h={120}
         lines={["PISTON"]}
-        state={state} selected={selected} onSelect={onSelect} />
+        state={state} selected={selected} onSelect={onSelect} usage={usage} />
 
       <Comp id="icv_flapper" x={500} y={425} w={120} h={55}
         lines={["ICV", "FLAPPER"]}
-        state={state} selected={selected} onSelect={onSelect} />
+        state={state} selected={selected} onSelect={onSelect} usage={usage} />
 
       <Comp id="icv_spring" x={500} y={490} w={120} h={55}
         lines={["ICV", "SPRING"]}
-        state={state} selected={selected} onSelect={onSelect} />
+        state={state} selected={selected} onSelect={onSelect} usage={usage} />
 
       <Comp id="head_block" x={635} y={425} w={130} h={120}
         lines={["CYLINDER", "HEAD BLOCK"]}
-        state={state} selected={selected} onSelect={onSelect} />
+        state={state} selected={selected} onSelect={onSelect} usage={usage} />
 
       <Comp id="retaining_ring" x={775} y={425} w={130} h={120}
         lines={["RETAINER", "RING"]}
-        state={state} selected={selected} onSelect={onSelect} />
+        state={state} selected={selected} onSelect={onSelect} usage={usage} />
 
       <Comp id="hp_seal_group" x={380} y={580} w={170} h={90}
         lines={["HP SEAL", "GROUP"]}
-        state={state} selected={selected} onSelect={onSelect} />
+        state={state} selected={selected} onSelect={onSelect} usage={usage} />
 
       <text x={550} y={740} className="section-label" fontSize="9">
         Click a component to view details and log changes

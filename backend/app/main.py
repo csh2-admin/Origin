@@ -9,11 +9,20 @@ from flask_cors import CORS
 
 from .routes import bp
 
-app = Flask(__name__)
+UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-CORS(app, supports_credentials=True, origins=["http://localhost:5173", "http://localhost:5174"])
+app = Flask(__name__)
+app.config["UPLOAD_DIR"] = UPLOAD_DIR
+app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB
+
+CORS(app, supports_credentials=True, origins=["http://localhost:5173", "http://localhost:5174", "http://localhost:5179"])
 
 app.register_blueprint(bp)
+
+@app.route("/uploads/<path:filename>")
+def serve_upload(filename):
+    return send_from_directory(UPLOAD_DIR, filename)
 
 FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist")
 

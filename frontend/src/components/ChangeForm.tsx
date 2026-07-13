@@ -14,6 +14,10 @@ function toLocalISO(): string {
   return d.toISOString().slice(0, 16);
 }
 
+const TZ_ABBR = Intl.DateTimeFormat(undefined, { timeZoneName: "short" })
+  .formatToParts(new Date())
+  .find((p) => p.type === "timeZoneName")?.value ?? "";
+
 export function ChangeForm({ position, onSaved, onCancel }: Props) {
   const [catalog, setCatalog] = useState<PartCatalogEntry[]>([]);
   const [selectedPart, setSelectedPart] = useState("");
@@ -142,7 +146,7 @@ export function ChangeForm({ position, onSaved, onCancel }: Props) {
       </div>
 
       <div className="field">
-        <label>When did this happen?</label>
+        <label>When did this happen? ({TZ_ABBR})</label>
         <input
           type="datetime-local"
           value={effectiveTime}
