@@ -1051,6 +1051,8 @@ def ask_weebo(conn):
 
 VALID_SUB_PAGES = {"seal_installation", "pump_assembly", "pump_installation", "startup_procedure", "shutdown_procedure"}
 
+ADMIN_USERS = {"engineer1", "edwardyoun", "anthonyku", "jimmyli"}
+
 INSTRUCTION_COLUMNS = "id, sub_page, step_order, action, pns_tags, tools, torque_spec, created_by, updated_at"
 
 
@@ -1075,8 +1077,8 @@ def add_instruction(sub_page, conn):
     cur = conn.cursor()
     cur.execute("SELECT session_user")
     user = cur.fetchone()[0]
-    if user != "engineer1":
-        return jsonify({"detail": "Only engineer1 can edit instructions"}), 403
+    if user not in ADMIN_USERS:
+        return jsonify({"detail": "Admin access required to edit instructions"}), 403
     body = request.get_json() or {}
     cur.execute(
         "SELECT COALESCE(MAX(step_order), 0) + 1 FROM assembly_instructions WHERE sub_page = %s",
@@ -1109,8 +1111,8 @@ def update_instruction(sub_page, instr_id, conn):
     cur = conn.cursor()
     cur.execute("SELECT session_user")
     user = cur.fetchone()[0]
-    if user != "engineer1":
-        return jsonify({"detail": "Only engineer1 can edit instructions"}), 403
+    if user not in ADMIN_USERS:
+        return jsonify({"detail": "Admin access required to edit instructions"}), 403
     body = request.get_json() or {}
     allowed = {"action", "pns_tags", "tools", "torque_spec", "step_order"}
     sets = []
@@ -1141,8 +1143,8 @@ def delete_instruction(sub_page, instr_id, conn):
     cur = conn.cursor()
     cur.execute("SELECT session_user")
     user = cur.fetchone()[0]
-    if user != "engineer1":
-        return jsonify({"detail": "Only engineer1 can edit instructions"}), 403
+    if user not in ADMIN_USERS:
+        return jsonify({"detail": "Admin access required to edit instructions"}), 403
     cur.execute(
         "DELETE FROM assembly_instructions WHERE id = %s AND sub_page = %s",
         (instr_id, sub_page),
@@ -1159,8 +1161,8 @@ def reorder_instructions(sub_page, conn):
     cur = conn.cursor()
     cur.execute("SELECT session_user")
     user = cur.fetchone()[0]
-    if user != "engineer1":
-        return jsonify({"detail": "Only engineer1 can edit instructions"}), 403
+    if user not in ADMIN_USERS:
+        return jsonify({"detail": "Admin access required to edit instructions"}), 403
     body = request.get_json() or {}
     order = body.get("order", [])
     for idx, instr_id in enumerate(order, 1):
@@ -1198,8 +1200,8 @@ def start_assembly_run(sub_page, conn):
         return jsonify({"detail": "Invalid sub_page"}), 400
     body = request.get_json() or {}
     pump_head = body.get("pump_head", 1)
-    if pump_head not in (1, 2, 3):
-        return jsonify({"detail": "pump_head must be 1, 2, or 3"}), 400
+    if pump_head not in (0, 1, 2, 3):
+        return jsonify({"detail": "pump_head must be 0, 1, 2, or 3"}), 400
     cur = conn.cursor()
     cur.execute(
         f"""
@@ -1287,6 +1289,22 @@ def update_assembly_step(run_id, step_id, conn):
     return jsonify(_serialize(result))
 
 
+@bp.route("/assembly/runs/<int:run_id>", methods=["DELETE"])
+@require_db
+def delete_assembly_run(run_id, conn):
+    cur = conn.cursor()
+    cur.execute("SELECT completed_at FROM assembly_runs WHERE id = %s", (run_id,))
+    row = cur.fetchone()
+    if not row:
+        return jsonify({"detail": "Not found"}), 404
+    if row[0] is not None:
+        return jsonify({"detail": "Cannot delete a completed run"}), 400
+    cur.execute("DELETE FROM assembly_step_logs WHERE run_id = %s", (run_id,))
+    cur.execute("DELETE FROM assembly_runs WHERE id = %s", (run_id,))
+    conn.commit()
+    return jsonify({"status": "deleted"})
+
+
 @bp.route("/assembly/runs/<int:run_id>/complete", methods=["POST"])
 @require_db
 def complete_assembly_run(run_id, conn):
@@ -1301,6 +1319,49 @@ def complete_assembly_run(run_id, conn):
     result = _dict_row_from(cur.description, row)
     conn.commit()
     return jsonify(_serialize(result))
+
+
+@bp.route("/feedback")
+@require_db
+def list_feedback(conn):
+    cur = conn.cursor()
+    cur.execute("SELECT session_user")
+    user = cur.fetchone()[0]
+    if user != "engineer1":
+        return jsonify({"detail": "Unauthorized"}), 403
+    category = request.args.get("category", "").strip()
+    conditions = []
+    params = []
+    if category:
+        conditions.append("category = %s")
+        params.append(category)
+    where = (" WHERE " + " AND ".join(conditions)) if conditions else ""
+    conditions.append("resolved_at IS NULL")
+    where = " WHERE " + " AND ".join(conditions)
+    cur.execute(
+        f"SELECT id, category, message, submitted_by, created_at FROM feedback{where} ORDER BY created_at DESC",
+        tuple(params),
+    )
+    return jsonify([_serialize(r) for r in _dict_rows(cur)])
+
+
+@bp.route("/feedback/<int:feedback_id>/resolve", methods=["POST"])
+@require_db
+def resolve_feedback(feedback_id, conn):
+    cur = conn.cursor()
+    cur.execute("SELECT session_user")
+    user = cur.fetchone()[0]
+    if user != "engineer1":
+        return jsonify({"detail": "Unauthorized"}), 403
+    cur.execute(
+        "UPDATE feedback SET resolved_at = NOW() WHERE id = %s AND resolved_at IS NULL RETURNING id",
+        (feedback_id,),
+    )
+    row = cur.fetchone()
+    if not row:
+        return jsonify({"detail": "Not found or already resolved"}), 404
+    conn.commit()
+    return jsonify({"status": "ok"})
 
 
 @bp.route("/feedback", methods=["POST"])

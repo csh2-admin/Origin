@@ -89,11 +89,11 @@ export function Diagram({ state, selected, onSelect, onRemoveInlineDcv, usage, r
       {/* ---- Flow lines ---- */}
       <line x1="515" y1="170" x2="515" y2="22" className="flow-line" />
       <polygon points="509,28 521,28 515,14" className="flow-arrow" />
-      <text x="550" y="22" className="section-label" textAnchor="start">DISCHARGE</text>
+      <text x="565" y="22" className="section-label" textAnchor="start">DISCHARGE</text>
 
-      <line x1="1020" y1="485" x2="1260" y2="485" className="flow-line" />
+      <line x1="1020" y1="485" x2="1140" y2="485" className="flow-line" />
       <polygon points="1028,479 1028,491 1016,485" className="flow-arrow" />
-      <text x="1170" y="473" className="section-label">SUCTION</text>
+      <text x="1125" y="473" className="section-label">SUCTION</text>
 
       {/* ---- In-Line DCV (above housing, toggleable) ---- */}
       <Comp id="inline_dcv" x={455} y={50} w={120} h={80}

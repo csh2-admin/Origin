@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   addInstruction,
   completeAssemblyRun,
+  deleteAssemblyRun,
   deleteInstruction,
   getAssemblyRun,
   getAssemblyRuns,
@@ -66,7 +67,8 @@ function AssemblySubPage({ subPage, user, labelOverride, simplified }: { subPage
   const [runs, setRuns] = useState<AssemblyRun[]>([]);
   const [showHistory, setShowHistory] = useState(false);
 
-  const canEdit = user === "engineer1";
+  const ADMIN_USERS = ["engineer1", "edwardyoun", "anthonyku", "jimmyli"];
+  const canEdit = ADMIN_USERS.includes(user);
   const pageLabel = labelOverride ?? ASSEMBLY_TABS.find((sp) => sp.id === subPage)?.label ?? subPage;
 
   const load = useCallback(async () => {
@@ -190,8 +192,8 @@ function AssemblySubPage({ subPage, user, labelOverride, simplified }: { subPage
   if (wizardHead !== null) {
     return (
       <div className="asm-start-panel">
-        <h3>Start {pageLabel} — Pump Head {wizardHead}</h3>
-        <p>This will create a new assembly run for Pump Head {wizardHead} with {instructions.length} steps.</p>
+        <h3>Start {pageLabel}{!simplified && wizardHead ? ` — Pump Head ${wizardHead}` : ""}</h3>
+        <p>This will create a new {simplified ? "procedure log" : `assembly run for Pump Head ${wizardHead}`} with {instructions.length} steps.</p>
         <div className="asm-start-actions">
           <button className="btn btn-primary" style={{ width: "auto" }} onClick={() => handleStartAssembly(wizardHead)} disabled={saving}>
             {saving ? "Starting..." : "Confirm & Start"}
@@ -208,14 +210,18 @@ function AssemblySubPage({ subPage, user, labelOverride, simplified }: { subPage
         <h2>{pageLabel}</h2>
         <div className="asm-header-actions">
           <button className="btn btn-secondary" style={{ width: "auto" }} onClick={handleLoadHistory}>History</button>
-          <div className="asm-start-dropdown">
-            <button className="btn btn-primary" style={{ width: "auto" }}>{simplified ? "Start Procedure" : "Start Assembly"} &#9662;</button>
-            <div className="asm-dropdown-menu">
-              {[1, 2, 3].map((h) => (
-                <button key={h} onClick={() => setWizardHead(h)}>Pump Head {h}</button>
-              ))}
+          {simplified ? (
+            <button className="btn btn-primary" style={{ width: "auto" }} onClick={() => setWizardHead(0)}>Start Procedure</button>
+          ) : (
+            <div className="asm-start-dropdown">
+              <button className="btn btn-primary" style={{ width: "auto" }}>Start Assembly &#9662;</button>
+              <div className="asm-dropdown-menu">
+                {[1, 2, 3].map((h) => (
+                  <button key={h} onClick={() => setWizardHead(h)}>Pump Head {h}</button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -229,7 +235,7 @@ function AssemblySubPage({ subPage, user, labelOverride, simplified }: { subPage
       {showHistory && (
         <div className="asm-history">
           <div className="asm-history-header">
-            <h3>Assembly Run History</h3>
+            <h3>{pageLabel} History</h3>
             <button className="btn btn-secondary" style={{ width: "auto", padding: "0.25rem 0.75rem", fontSize: "0.8rem" }} onClick={() => setShowHistory(false)}>Close</button>
           </div>
           {runs.length === 0 ? (
@@ -238,7 +244,7 @@ function AssemblySubPage({ subPage, user, labelOverride, simplified }: { subPage
             <table className="asm-table">
               <thead>
                 <tr>
-                  <th>Head</th>
+                  {!simplified && <th>Head</th>}
                   <th>Started</th>
                   <th>Started By</th>
                   <th>Completed</th>
@@ -249,14 +255,26 @@ function AssemblySubPage({ subPage, user, labelOverride, simplified }: { subPage
               <tbody>
                 {runs.map((r) => (
                   <tr key={r.id}>
-                    <td>PH {r.pump_head}</td>
+                    {!simplified && <td>PH {r.pump_head}</td>}
                     <td>{new Date(r.started_at).toLocaleString()}</td>
                     <td>{r.started_by}</td>
                     <td>{r.completed_at ? new Date(r.completed_at).toLocaleString() : "In Progress"}</td>
                     <td>{r.completed_by ?? "—"}</td>
                     <td>
-                      <button className="btn btn-secondary" style={{ width: "auto", padding: "0.2rem 0.5rem", fontSize: "0.75rem" }}
-                        onClick={() => loadRun(r.id)}>View</button>
+                      <div className="asm-cell-actions">
+                        <button className="btn btn-secondary" style={{ width: "auto", padding: "0.2rem 0.5rem", fontSize: "0.75rem" }}
+                          onClick={() => loadRun(r.id)}>View</button>
+                        {!r.completed_at && (
+                          <button className="asm-btn-sm del" style={{ fontSize: "0.75rem" }}
+                            onClick={async () => {
+                              if (!confirm("Delete this in-progress run?")) return;
+                              try {
+                                await deleteAssemblyRun(r.id);
+                                handleLoadHistory();
+                              } catch { /* ignore */ }
+                            }}>Delete</button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -390,7 +408,7 @@ function AssemblySubPage({ subPage, user, labelOverride, simplified }: { subPage
       )}
       {instructions.length === 0 && !loading && !addingRow && (
         <p style={{ padding: "1rem", color: "var(--gray-500)" }}>
-          No instructions defined yet.{canEdit ? " Click '+ Add Step' to get started." : " Contact engineer1 to add steps."}
+          No instructions defined yet.{canEdit ? " Click '+ Add Step' to get started." : " Contact an admin to add steps."}
         </p>
       )}
     </div>
@@ -448,7 +466,7 @@ function AssemblyWizard({
     <div className="asm-wizard">
       <div className="asm-wizard-header">
         <div>
-          <h2>{pageLabel} — Pump Head {run.pump_head}</h2>
+          <h2>{pageLabel}{!simplified && run.pump_head ? ` — Pump Head ${run.pump_head}` : ""}</h2>
           <p className="asm-wizard-meta">
             Started by {run.started_by} at {new Date(run.started_at).toLocaleString()}
             {isCompleted && <> — Completed by {run.completed_by} at {new Date(run.completed_at!).toLocaleString()}</>}
@@ -531,14 +549,14 @@ function AssemblyWizard({
       {!isCompleted && allChecked && (
         <div className="asm-wizard-complete">
           <button className="btn btn-primary" style={{ width: "auto" }} onClick={handleComplete} disabled={completing}>
-            {completing ? "Completing..." : "Mark Assembly Complete"}
+            {completing ? "Completing..." : simplified ? "Mark Procedure Complete" : "Mark Assembly Complete"}
           </button>
         </div>
       )}
 
       {isCompleted && (
         <div className="asm-wizard-complete done">
-          Assembly completed successfully.
+          {simplified ? "Procedure" : "Assembly"} completed successfully.
         </div>
       )}
     </div>

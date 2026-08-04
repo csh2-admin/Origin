@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from flask import Flask, send_from_directory
+from flask import Flask, request, send_from_directory
 from flask_cors import CORS
 
 from .routes import bp
@@ -27,10 +27,16 @@ FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "
 app.register_blueprint(bp, url_prefix="/api")
 
 if os.path.isdir(FRONTEND_DIR):
-    @app.route("/", defaults={"path": ""})
-    @app.route("/<path:path>")
-    def serve_frontend(path):
-        file_path = os.path.join(FRONTEND_DIR, path)
-        if path and os.path.isfile(file_path):
-            return send_from_directory(FRONTEND_DIR, path)
+    @app.route("/")
+    def serve_frontend_root():
+        return send_from_directory(FRONTEND_DIR, "index.html")
+
+    @app.errorhandler(404)
+    def fallback_to_frontend(e):
+        req_path = request.path
+        if req_path.startswith("/api/") or req_path.startswith("/uploads/"):
+            return e
+        file_path = os.path.join(FRONTEND_DIR, req_path.lstrip("/"))
+        if os.path.isfile(file_path):
+            return send_from_directory(FRONTEND_DIR, req_path.lstrip("/"))
         return send_from_directory(FRONTEND_DIR, "index.html")

@@ -7,13 +7,13 @@ const SECTIONS = [
     page: "asset-model",
     title: "Asset Model",
     description:
-      "View and manage the current configuration of the triplex pump system. The main view shows all three pump heads, the motor, and crank drive. Click on a pump head to drill into its individual components (piston, seals, valves, etc.).",
+      "View and manage the current configuration of the pump system. The main view shows all three pump heads, the motor, and crank drive. Click on a pump head to drill into its individual components (piston, seals, valves, etc.).",
     bullets: [
       "Click any component to view its current part number, revision, serial, and installation history",
       "Use the side panel to swap parts — record what was removed and what was installed",
       "Upload photos (before/after/inspection) to any component",
       "Use the time-travel control in the header to view the system configuration at any past date",
-      "Cycle counts and runtime hours are calculated automatically from motor speed data",
+      "Cycle counts and runtime hours are calculated automatically from motor speed data, starting from the installed date/time up to present",
     ],
   },
   {
@@ -22,7 +22,6 @@ const SECTIONS = [
     description:
       "Editable step-by-step instructions for three assembly phases: Seal Installation, Pump Assembly, and Pump Installation. Each phase has its own instruction table and assembly tracking.",
     bullets: [
-      "engineer1 has full edit access — add, edit, delete, and reorder steps",
       "Each step can include: action description, part numbers/tags, required tools, and torque specs",
       "Mark torque as N/A for steps that don't require it",
       "Click 'Start Assembly' and select a pump head (1, 2, or 3) to begin a tracked assembly run",
@@ -34,9 +33,8 @@ const SECTIONS = [
     page: "startup",
     title: "Startup Procedure",
     description:
-      "Pre-seeded checklist of startup steps that must be completed before each test. Covers safety checks, PPE, power-on sequences, and system verification.",
+      "Checklist of startup steps that must be completed before each test.",
     bullets: [
-      "Steps are editable by engineer1 — add, remove, or reorder as procedures evolve",
       "Click 'Start Procedure' and select a pump head to begin a tracked startup run",
       "Check off each step as you go — timestamps are recorded automatically",
       "Completed runs are saved with who started and who completed the procedure",

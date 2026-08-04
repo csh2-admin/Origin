@@ -2443,3 +2443,150 @@ textarea {
 .howto-section li::marker {
   color: var(--accent);
 }
+
+/* ── Developer To-Do ─────────────────────────────────────────────── */
+
+.dev-todo-page {
+  max-width: 900px;
+}
+
+.dev-todo-header {
+  margin-bottom: 1.5rem;
+}
+
+.dev-todo-header h2 {
+  margin-bottom: 0.25rem;
+  color: var(--text-primary);
+}
+
+.dev-todo-header p {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.dev-todo-summary {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.dev-todo-stat {
+  flex: 1;
+  background: var(--neu-surface);
+  box-shadow: var(--shadow-raised);
+  border-radius: var(--radius-card);
+  padding: 1.25rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.dev-todo-stat-count {
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.dev-todo-stat.bug .dev-todo-stat-count { color: var(--red-600); }
+.dev-todo-stat.feature .dev-todo-stat-count { color: var(--accent); }
+.dev-todo-stat.general .dev-todo-stat-count { color: var(--text-secondary); }
+
+.dev-todo-stat-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+
+.dev-todo-filters {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.dev-todo-filter {
+  background: var(--neu-surface);
+  box-shadow: var(--shadow-flat);
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.4rem 1rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.dev-todo-filter.active {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 2px 8px var(--accent-glow);
+}
+
+.dev-todo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dev-todo-card {
+  background: var(--neu-surface);
+  box-shadow: var(--shadow-raised);
+  border-radius: var(--radius-card);
+  padding: 1rem 1.25rem;
+}
+
+.dev-todo-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.dev-todo-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.dev-todo-badge.bug {
+  background: #fef2f2;
+  color: var(--red-600);
+}
+
+.dev-todo-badge.feature {
+  background: #eff6ff;
+  color: var(--accent);
+}
+
+.dev-todo-badge.general {
+  background: #f3f4f6;
+  color: var(--text-secondary);
+}
+
+.dev-todo-meta {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.dev-todo-message {
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.dev-todo-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.75rem;
+}
+
+.dev-todo-resolve {
+  width: auto;
+  padding: 0.3rem 1rem;
+  font-size: 0.8rem;
+}

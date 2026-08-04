@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { getAllUsage, getMe, getState, logout, postChange } from "./api/client";
 import { Assembly, ProcedurePage } from "./components/Assembly";
+import { DevTodo } from "./components/DevTodo";
 import { Diagram } from "./components/Diagram";
 import { FeedbackModal } from "./components/FeedbackModal";
 import { HowToPage } from "./components/HowTo";
@@ -14,9 +15,9 @@ import { WeeboNewEntry } from "./components/WeeboNewEntry";
 import { WeeboRecords } from "./components/WeeboRecords";
 import type { PositionState } from "./types";
 
-type Page = "how-to" | "asset-model" | "assembly" | "startup" | "shutdown" | "weebo" | "run-test";
+type Page = "how-to" | "asset-model" | "assembly" | "startup" | "shutdown" | "weebo" | "run-test" | "dev-todo";
 
-const NAV_ITEMS: { id: Page; label: string }[] = [
+const NAV_ITEMS: { id: Page; label: string; devOnly?: boolean }[] = [
   { id: "how-to", label: "How To Use" },
   { id: "asset-model", label: "Asset Model" },
   { id: "assembly", label: "Assembly Instructions" },
@@ -24,6 +25,7 @@ const NAV_ITEMS: { id: Page; label: string }[] = [
   { id: "shutdown", label: "Shut-Down Procedure" },
   { id: "run-test", label: "Run Test" },
   { id: "weebo", label: "Weebo" },
+  { id: "dev-todo", label: "Developer To-Do", devOnly: true },
 ];
 
 function toLocalISO(): string {
@@ -175,7 +177,7 @@ export function App() {
       <div className="app-body">
         <nav className={`sidebar${navOpen ? "" : " collapsed"}`}>
           <div className="sidebar-title">Contents</div>
-          {NAV_ITEMS.map((item) => (
+          {NAV_ITEMS.filter((item) => !item.devOnly || user === "engineer1").map((item) => (
             <button
               key={item.id}
               className={`sidebar-item${page === item.id ? " active" : ""}`}
@@ -254,6 +256,8 @@ export function App() {
                 <WeeboAsk />
               )}
             </div>
+          ) : page === "dev-todo" ? (
+            <DevTodo />
           ) : (
             <PlaceholderPage title={currentLabel} />
           )}

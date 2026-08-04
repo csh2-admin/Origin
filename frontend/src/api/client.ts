@@ -4,7 +4,7 @@ const BASE = import.meta.env.DEV ? "/api" : "";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 5000);
+  const timeout = setTimeout(() => controller.abort(), 15000);
   const res = await fetch(`${BASE}${path}`, {
     credentials: "include",
     signal: controller.signal,
@@ -301,8 +301,21 @@ export async function updateAssemblyStep(runId: number, stepId: number, fields: 
   });
 }
 
+export async function deleteAssemblyRun(runId: number) {
+  return request<{ status: string }>(`/assembly/runs/${runId}`, { method: "DELETE" });
+}
+
 export async function completeAssemblyRun(runId: number) {
   return request<AssemblyRun>(`/assembly/runs/${runId}/complete`, { method: "POST" });
+}
+
+export async function getFeedback(category?: string) {
+  const qs = category ? `?category=${encodeURIComponent(category)}` : "";
+  return request<{ id: number; category: string; message: string; submitted_by: string; created_at: string }[]>(`/feedback${qs}`);
+}
+
+export async function resolveFeedback(feedbackId: number) {
+  return request<{ status: string }>(`/feedback/${feedbackId}/resolve`, { method: "POST" });
 }
 
 export async function submitFeedback(category: string, message: string) {
