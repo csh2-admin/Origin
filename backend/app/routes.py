@@ -40,7 +40,7 @@ def login():
     resp = make_response(jsonify({"status": "ok", "user": username}))
     resp.set_cookie(
         "session_id", session_id,
-        httponly=True, samesite="Lax", max_age=8 * 3600,
+        httponly=True, samesite="Lax", max_age=8 * 3600, path="/",
     )
     return resp
 
@@ -51,7 +51,7 @@ def logout():
     if sid:
         delete_session(sid)
     resp = make_response(jsonify({"status": "ok"}))
-    resp.delete_cookie("session_id")
+    resp.delete_cookie("session_id", path="/")
     return resp
 
 
