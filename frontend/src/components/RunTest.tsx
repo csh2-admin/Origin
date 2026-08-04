@@ -114,7 +114,7 @@ export function RunTest({ onNavigate }: Props) {
     setAdvancing(false);
   }
 
-  async function toggleItem(key: string, items: string[]) {
+  async function toggleItem(key: string, _items: string[]) {
     if (!run) return;
     const next = { ...checklist, [key]: !checklist[key] };
     setChecklist(next);
@@ -141,7 +141,6 @@ export function RunTest({ onNavigate }: Props) {
 
   const stepIdx = run ? STEPS.findIndex((s) => s.id === run.current_step) : -1;
   const isTriplex = run?.test_type === "triplex";
-  const headCount = isTriplex ? 3 : 1;
 
   return (
     <div className="run-test">

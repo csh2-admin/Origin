@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { createMemo, extractInsights, transcribeAudio } from "../api/client";
 
 const ACTIVITY_TYPES = [
@@ -50,9 +50,44 @@ export function WeeboNewEntry({ engineer, onSaved }: { engineer: string; onSaved
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const mediaRecorder = useRef<MediaRecorder | null>(null);
+  const audioChunks = useRef<Blob[]>([]);
 
   function updateField<K extends keyof Fields>(key: K, value: Fields[K]) {
     setFields((prev) => ({ ...prev, [key]: value }));
+  }
+
+  async function startRecording() {
+    setError("");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      audioChunks.current = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunks.current.push(e.data);
+      };
+      recorder.onstop = () => {
+        const blob = new Blob(audioChunks.current, { type: "audio/webm" });
+        const recordedFile = new File([blob], "recording.webm", { type: "audio/webm" });
+        setFile(recordedFile);
+        setAudioUrl(URL.createObjectURL(blob));
+        stream.getTracks().forEach((t) => t.stop());
+      };
+      mediaRecorder.current = recorder;
+      recorder.start();
+      setRecording(true);
+    } catch {
+      setError("Microphone access denied. Check your browser permissions.");
+    }
+  }
+
+  function stopRecording() {
+    if (mediaRecorder.current && mediaRecorder.current.state !== "inactive") {
+      mediaRecorder.current.stop();
+    }
+    setRecording(false);
   }
 
   async function handleTranscribe() {
@@ -102,7 +137,7 @@ export function WeeboNewEntry({ engineer, onSaved }: { engineer: string; onSaved
       await createMemo({
         ...fields,
         engineer,
-        source_file: file?.name || "Manual Entry",
+        source_file: file?.name === "recording.webm" ? "Voice Recording" : file?.name || "Manual Entry",
         raw_transcript: transcript,
         raw_insights: fields,
       });
@@ -142,15 +177,39 @@ export function WeeboNewEntry({ engineer, onSaved }: { engineer: string; onSaved
 
       {/* Step 1: Audio */}
       <div className="wne-card" style={{ display: step === 1 ? undefined : "none" }}>
-        <h3>Upload Audio</h3>
-        <p>Upload a voice memo or audio recording to transcribe.</p>
+        <h3>Record or Upload Audio</h3>
+        <p>Record a voice log directly, or upload an existing audio file.</p>
+
+        <div className="wne-record-section">
+          {recording ? (
+            <button className="btn wne-record-btn recording" style={{ width: "auto" }} onClick={stopRecording}>
+              <span className="wne-record-dot" /> Stop Recording
+            </button>
+          ) : (
+            <button className="btn wne-record-btn" style={{ width: "auto" }} onClick={startRecording} disabled={processing}>
+              <span className="wne-record-dot" /> Record Voice Log
+            </button>
+          )}
+          {audioUrl && !recording && (
+            <audio controls src={audioUrl} className="wne-audio-player" />
+          )}
+        </div>
+
+        <div className="wne-divider">
+          <span>or upload a file</span>
+        </div>
+
         <input
           type="file"
           accept={AUDIO_ACCEPT}
-          onChange={(e) => setFile(e.target.files?.[0] || null)}
+          onChange={(e) => {
+            const f = e.target.files?.[0] || null;
+            setFile(f);
+            setAudioUrl(null);
+          }}
           className="wne-file-input"
         />
-        {file && (
+        {file && !audioUrl && (
           <div className="wne-file-info">
             {file.name} ({(file.size / 1024 / 1024).toFixed(1)} MB)
           </div>
@@ -160,7 +219,7 @@ export function WeeboNewEntry({ engineer, onSaved }: { engineer: string; onSaved
             className="btn btn-primary"
             style={{ width: "auto" }}
             onClick={handleTranscribe}
-            disabled={!file || processing}
+            disabled={!file || processing || recording}
           >
             {processing ? "Transcribing..." : "Transcribe"}
           </button>

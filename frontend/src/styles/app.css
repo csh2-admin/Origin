@@ -652,24 +652,20 @@ textarea {
 }
 
 /* ---- Feedback modal ---- */
-.feedback-btn {
-  position: fixed;
-  bottom: 1.25rem;
-  right: 1.25rem;
-  background: var(--accent);
+.btn-feedback {
+  background: rgba(255, 255, 255, 0.15);
   color: #fff;
-  border: none;
-  border-radius: 50px;
-  padding: 0.6rem 1.1rem;
-  font-size: 0.85rem;
-  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 500;
   cursor: pointer;
-  box-shadow: var(--shadow-raised), 0 0 12px var(--accent-glow);
-  z-index: 900;
+  font-family: inherit;
 }
 
-.feedback-btn:hover {
-  box-shadow: var(--shadow-raised), 0 0 12px var(--accent-glow);
+.btn-feedback:hover {
+  background: rgba(255, 255, 255, 0.25);
 }
 
 .feedback-overlay {
@@ -1655,6 +1651,65 @@ textarea {
   color: var(--text-secondary);
   font-size: 0.9rem;
   margin-bottom: 1rem;
+}
+
+.wne-record-section {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.wne-record-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.wne-record-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--red-600, #dc2626);
+  display: inline-block;
+}
+
+.wne-record-btn.recording {
+  background: var(--red-600, #dc2626) !important;
+  color: #fff !important;
+}
+
+.wne-record-btn.recording .wne-record-dot {
+  background: #fff;
+  animation: wne-pulse 1s ease-in-out infinite;
+}
+
+@keyframes wne-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.wne-audio-player {
+  height: 36px;
+  flex: 1;
+  max-width: 300px;
+}
+
+.wne-divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1rem 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.wne-divider::before,
+.wne-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--shadow-dark, rgba(174, 180, 185, 0.3));
 }
 
 .wne-file-input {

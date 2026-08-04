@@ -3,8 +3,7 @@ services:
     build: .
     ports:
       - "8000:8000"
+    env_file:
+      - backend/.env
     environment:
-      - DB_HOST=${DB_HOST}
-      - DB_PORT=${DB_PORT:-5432}
-      - DB_NAME=${DB_NAME:-csh2-database}
-      - DB_SSLMODE=${DB_SSLMODE:-require}
+      - FLASK_APP=backend.app.main:app

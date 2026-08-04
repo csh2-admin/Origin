@@ -165,6 +165,7 @@ export function App() {
           </div>
         )}
         <div className="user-info">
+          <button className="btn-feedback" onClick={() => setShowFeedback(true)}>Feedback</button>
           <span>{user}</span>
           <button className="btn-logout" onClick={handleLogout}>Sign Out</button>
         </div>
@@ -263,7 +264,6 @@ export function App() {
           )}
         </div>
       </div>
-      <button className="feedback-btn" onClick={() => setShowFeedback(true)}>Feedback</button>
       {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
     </>
   );

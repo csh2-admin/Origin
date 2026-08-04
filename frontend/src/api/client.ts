@@ -1,6 +1,6 @@
-import type { ActionItem, AskResponse, AssemblyInstruction, AssemblyRun, AssemblyStepLog, ChangeEvent, ChangePayload, ComponentPhoto, MemoEntry, PartCatalogEntry, PositionState, TestRun, UsageStats } from "../types";
+import type { ActionItem, AskResponse, AssemblyInstruction, AssemblyRun, AssemblyStepLog, AssemblyVerification, ChangeEvent, ChangePayload, ComponentPhoto, MemoEntry, PartCatalogEntry, PositionState, TestRun, UsageStats } from "../types";
 
-const BASE = import.meta.env.DEV ? "/api" : "";
+const BASE = "/api";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const controller = new AbortController();
@@ -179,10 +179,22 @@ export async function transcribeAudio(file: File) {
 }
 
 export async function extractInsights(transcript: string) {
-  return request<Record<string, unknown>>("/memos/extract", {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 60000);
+  const res = await fetch(`${BASE}/memos/extract`, {
     method: "POST",
+    credentials: "include",
+    signal: controller.signal,
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ transcript }),
   });
+  clearTimeout(timeout);
+  if (res.status === 401) throw new Error("UNAUTHORIZED");
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || res.statusText);
+  }
+  return res.json() as Promise<Record<string, unknown>>;
 }
 
 export async function createMemo(fields: Record<string, unknown>) {

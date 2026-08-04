@@ -74,7 +74,7 @@ export function WeeboRecords() {
     if (!editing) return;
     setSaving(true);
     try {
-      const updated = await updateMemo(editing.id, editing);
+      const updated = await updateMemo(editing.id, editing as unknown as Record<string, unknown>);
       setMemos((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
       setEditing(null);
     } catch (err) {

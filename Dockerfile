@@ -16,7 +16,8 @@ COPY --from=backend /usr/local/lib/python3.13/site-packages /usr/local/lib/pytho
 COPY --from=backend /usr/local/bin /usr/local/bin
 COPY backend/ backend/
 COPY --from=frontend /build/dist frontend/dist/
-COPY backend/.env.example backend/.env
+
+RUN mkdir -p backend/uploads
 
 EXPOSE 8000
-CMD ["python", "-m", "flask", "--app", "backend.app.main:app", "run", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["gunicorn", "backend.app.main:app", "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "120"]
