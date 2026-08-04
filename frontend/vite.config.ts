@@ -8,7 +8,6 @@ export default defineConfig({
     proxy: {
       "/api": {
         target: "http://localhost:8000",
-        rewrite: (path) => path.replace(/^\/api/, ""),
         configure: (proxy) => {
           proxy.on("error", (_err, _req, res) => {
             if (!res.headersSent) {

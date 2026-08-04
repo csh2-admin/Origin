@@ -1,4 +1,4 @@
-import type { ChangeEvent, ChangePayload, ComponentPhoto, PartCatalogEntry, PositionState, UsageStats } from "../types";
+import type { ChangeEvent, ChangePayload, ComponentPhoto, PartCatalogEntry, PositionState, TestRun, UsageStats } from "../types";
 
 const BASE = import.meta.env.DEV ? "/api" : "";
 
@@ -100,4 +100,47 @@ export async function uploadPhoto(
 
 export async function deletePhoto(photoId: number) {
   return request<{ status: string }>(`/photo/${photoId}`, { method: "DELETE" });
+}
+
+export async function getActiveTestRun() {
+  return request<TestRun | null>("/test-run/active");
+}
+
+export async function startTestRun(testType: "simplex" | "triplex") {
+  return request<TestRun>("/test-run/start", {
+    method: "POST",
+    body: JSON.stringify({ test_type: testType }),
+  });
+}
+
+export async function advanceTestRun(runId: number, checklistState?: Record<string, boolean>) {
+  return request<TestRun>(`/test-run/${runId}/advance`, {
+    method: "POST",
+    body: JSON.stringify({ checklist_state: JSON.stringify(checklistState ?? {}) }),
+  });
+}
+
+export async function updateChecklist(runId: number, checklistState: Record<string, boolean>) {
+  return request<TestRun>(`/test-run/${runId}/checklist`, {
+    method: "PUT",
+    body: JSON.stringify({ checklist_state: JSON.stringify(checklistState) }),
+  });
+}
+
+export async function updateNotes(runId: number, notes: string) {
+  return request<TestRun>(`/test-run/${runId}/notes`, {
+    method: "PUT",
+    body: JSON.stringify({ notes }),
+  });
+}
+
+export async function verifyAssembly() {
+  return request<AssemblyVerification>("/test-run/verify-assembly");
+}
+
+export async function submitFeedback(category: string, message: string) {
+  return request<{ id: number }>("/feedback", {
+    method: "POST",
+    body: JSON.stringify({ category, message }),
+  });
 }

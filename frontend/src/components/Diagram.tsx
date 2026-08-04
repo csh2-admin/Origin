@@ -89,7 +89,7 @@ export function Diagram({ state, selected, onSelect, onRemoveInlineDcv, usage, r
       {/* ---- Flow lines ---- */}
       <line x1="515" y1="170" x2="515" y2="22" className="flow-line" />
       <polygon points="509,28 521,28 515,14" className="flow-arrow" />
-      <text x="515" y="8" className="section-label">DISCHARGE</text>
+      <text x="535" y="22" className="section-label" textAnchor="start">DISCHARGE</text>
 
       <line x1="930" y1="485" x2="1170" y2="485" className="flow-line" />
       <polygon points="938,479 938,491 926,485" className="flow-arrow" />

@@ -49,6 +49,24 @@ export interface ComponentPhoto {
   uploaded_by: string;
 }
 
+export interface TestRun {
+  id: number;
+  test_type: "simplex" | "triplex";
+  current_step: string;
+  checklist_state: string;
+  notes: string | null;
+  started_at: string;
+  started_by: string;
+  completed_at: string | null;
+}
+
+export interface AssemblyVerification {
+  complete: boolean;
+  missing: { name: string; display_name: string }[];
+  total: number;
+  installed: number;
+}
+
 export interface ChangePayload {
   position: string;
   effective_time: string;

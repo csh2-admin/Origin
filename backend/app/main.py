@@ -18,13 +18,13 @@ app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB
 
 CORS(app, supports_credentials=True, origins=["http://localhost:5173", "http://localhost:5174", "http://localhost:5179"])
 
-app.register_blueprint(bp)
-
 @app.route("/uploads/<path:filename>")
 def serve_upload(filename):
     return send_from_directory(UPLOAD_DIR, filename)
 
 FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist")
+
+app.register_blueprint(bp, url_prefix="/api")
 
 if os.path.isdir(FRONTEND_DIR):
     @app.route("/", defaults={"path": ""})

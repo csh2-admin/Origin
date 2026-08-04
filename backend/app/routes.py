@@ -391,3 +391,182 @@ def delete_photo(photo_id, conn):
     cur.execute("DELETE FROM component_photos WHERE id = %s", (photo_id,))
     conn.commit()
     return jsonify({"status": "ok"})
+
+
+# ---- Test Runs ----
+
+TEST_STEPS = ["assembly", "startup", "test", "shutdown", "complete"]
+
+@bp.route("/test-run/active")
+@require_db
+def get_active_test_run(conn):
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT id, test_type, current_step, checklist_state, notes, started_at, started_by, completed_at
+        FROM test_runs
+        WHERE completed_at IS NULL
+        ORDER BY started_at DESC
+        LIMIT 1
+        """
+    )
+    row = cur.fetchone()
+    if not row:
+        return jsonify(None)
+    return jsonify(_serialize(_dict_row_from(cur.description, row)))
+
+
+@bp.route("/test-run/start", methods=["POST"])
+@require_db
+def start_test_run(conn):
+    body = request.get_json() or {}
+    test_type = body.get("test_type", "simplex")
+    if test_type not in ("simplex", "triplex"):
+        return jsonify({"detail": "test_type must be simplex or triplex"}), 400
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM test_runs WHERE completed_at IS NULL LIMIT 1")
+    if cur.fetchone():
+        return jsonify({"detail": "A test run is already in progress"}), 409
+    cur.execute(
+        """
+        INSERT INTO test_runs (test_type, current_step, checklist_state, started_by)
+        VALUES (%s, 'assembly', '{}', CURRENT_USER)
+        RETURNING id, test_type, current_step, checklist_state, notes, started_at, started_by, completed_at
+        """,
+        (test_type,),
+    )
+    row = _dict_row(cur)
+    conn.commit()
+    return jsonify(_serialize(row)), 201
+
+
+@bp.route("/test-run/<int:run_id>/advance", methods=["POST"])
+@require_db
+def advance_test_run(run_id, conn):
+    body = request.get_json() or {}
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT current_step, checklist_state FROM test_runs WHERE id = %s AND completed_at IS NULL",
+        (run_id,),
+    )
+    row = cur.fetchone()
+    if not row:
+        return jsonify({"detail": "Test run not found or already completed"}), 404
+
+    current = row[0]
+    idx = TEST_STEPS.index(current)
+    if idx >= len(TEST_STEPS) - 1:
+        return jsonify({"detail": "Already at final step"}), 400
+
+    next_step = TEST_STEPS[idx + 1]
+    completed_at = datetime.now(timezone.utc) if next_step == "complete" else None
+
+    checklist_state = body.get("checklist_state", row[1])
+
+    cur.execute(
+        """
+        UPDATE test_runs
+        SET current_step = %s, checklist_state = %s, completed_at = %s
+        WHERE id = %s
+        RETURNING id, test_type, current_step, checklist_state, notes, started_at, started_by, completed_at
+        """,
+        (next_step, checklist_state, completed_at, run_id),
+    )
+    result = _dict_row(cur)
+    conn.commit()
+    return jsonify(_serialize(result))
+
+
+@bp.route("/test-run/<int:run_id>/checklist", methods=["PUT"])
+@require_db
+def update_checklist(run_id, conn):
+    body = request.get_json()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        UPDATE test_runs SET checklist_state = %s WHERE id = %s AND completed_at IS NULL
+        RETURNING id, test_type, current_step, checklist_state, notes, started_at, started_by, completed_at
+        """,
+        (body.get("checklist_state", "{}"), run_id),
+    )
+    row = cur.fetchone()
+    if not row:
+        return jsonify({"detail": "Not found"}), 404
+    result = _dict_row_from(cur.description, row)
+    conn.commit()
+    return jsonify(_serialize(result))
+
+
+@bp.route("/test-run/<int:run_id>/notes", methods=["PUT"])
+@require_db
+def update_notes(run_id, conn):
+    body = request.get_json()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        UPDATE test_runs SET notes = %s WHERE id = %s AND completed_at IS NULL
+        RETURNING id, test_type, current_step, checklist_state, notes, started_at, started_by, completed_at
+        """,
+        (body.get("notes", ""), run_id),
+    )
+    row = cur.fetchone()
+    if not row:
+        return jsonify({"detail": "Not found"}), 404
+    result = _dict_row_from(cur.description, row)
+    conn.commit()
+    return jsonify(_serialize(result))
+
+
+@bp.route("/test-run/verify-assembly")
+@require_db
+def verify_assembly(conn):
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT p.name, p.display_name,
+               (SELECT installed_part_number
+                FROM change_events ce
+                WHERE ce.position = p.name
+                ORDER BY effective_time DESC, recorded_time DESC
+                LIMIT 1) AS part_number
+        FROM positions p
+        ORDER BY p.display_name
+        """
+    )
+    rows = _dict_rows(cur)
+    missing = [r for r in rows if not r.get("part_number")]
+    return jsonify({
+        "complete": len(missing) == 0,
+        "missing": [_serialize(r) for r in missing],
+        "total": len(rows),
+        "installed": len(rows) - len(missing),
+    })
+
+
+def _dict_row_from(description, row):
+    cols = [d[0] for d in description]
+    return dict(zip(cols, row))
+
+
+@bp.route("/feedback", methods=["POST"])
+@require_db
+def submit_feedback(conn):
+    body = request.get_json() or {}
+    category = body.get("category", "general")
+    message = (body.get("message") or "").strip()
+    if not message:
+        return jsonify({"detail": "Message is required"}), 400
+    if category not in ("bug", "feature", "general"):
+        return jsonify({"detail": "Invalid category"}), 400
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO feedback (category, message, submitted_by)
+        VALUES (%s, %s, CURRENT_USER)
+        RETURNING id, category, message, submitted_by, created_at
+        """,
+        (category, message),
+    )
+    row = _dict_row(cur)
+    conn.commit()
+    return jsonify(_serialize(row)), 201
