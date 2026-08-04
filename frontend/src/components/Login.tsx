@@ -27,8 +27,9 @@ export function Login({ onLogin }: Props) {
 
   return (
     <div className="login-wrapper">
+      <img src="/logo.png" alt="CSH2" className="login-logo" />
       <form className="login-card" onSubmit={handleSubmit}>
-        <h1>CSH2 Maintenance Software</h1>
+        <h1>Origin</h1>
         <p>Sign in with your database credentials</p>
         <div className="field">
           <label htmlFor="username">Username</label>

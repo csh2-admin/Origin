@@ -1,16 +1,23 @@
 import { useCallback, useEffect, useState } from "react";
 import { getAllUsage, getMe, getState, logout, postChange } from "./api/client";
+import { Assembly, ProcedurePage } from "./components/Assembly";
 import { Diagram } from "./components/Diagram";
 import { FeedbackModal } from "./components/FeedbackModal";
+import { HowToPage } from "./components/HowTo";
 import { Login } from "./components/Login";
 import { PartDetail } from "./components/PartDetail";
 import { RunTest } from "./components/RunTest";
 import { Triplex } from "./components/Triplex";
+import { WeeboActions } from "./components/WeeboActions";
+import { WeeboAsk } from "./components/WeeboAsk";
+import { WeeboNewEntry } from "./components/WeeboNewEntry";
+import { WeeboRecords } from "./components/WeeboRecords";
 import type { PositionState } from "./types";
 
-type Page = "asset-model" | "assembly" | "startup" | "shutdown" | "weebo" | "run-test";
+type Page = "how-to" | "asset-model" | "assembly" | "startup" | "shutdown" | "weebo" | "run-test";
 
 const NAV_ITEMS: { id: Page; label: string }[] = [
+  { id: "how-to", label: "How To Use" },
   { id: "asset-model", label: "Asset Model" },
   { id: "assembly", label: "Assembly Instructions" },
   { id: "startup", label: "Startup Procedure" },
@@ -37,7 +44,7 @@ function PlaceholderPage({ title }: { title: string }) {
 export function App() {
   const [user, setUser] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
-  const [page, setPage] = useState<Page>("asset-model");
+  const [page, setPage] = useState<Page>("how-to");
   const [navOpen, setNavOpen] = useState(true);
   const [state, setState] = useState<PositionState[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
@@ -45,6 +52,7 @@ export function App() {
   const [usage, setUsage] = useState<Record<string, { est_cycles: number; runtime_hours: number }>>({});
   const [activeHead, setActiveHead] = useState<number | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [weeboTab, setWeeboTab] = useState<"records" | "new" | "actions" | "ask">("records");
 
   const isTimeTraveling = viewAt !== "";
 
@@ -134,7 +142,8 @@ export function App() {
           <button className="nav-toggle" onClick={() => setNavOpen(!navOpen)} title="Toggle navigation">
             {navOpen ? "✕" : "☰"}
           </button>
-          <h1>CSH2 MAINTENANCE SOFTWARE</h1>
+          <img src="/logo.png" alt="CSH2" className="header-logo" />
+          <h1>ORIGIN</h1>
         </div>
         {page === "asset-model" && (
           <div className="time-travel">
@@ -177,11 +186,19 @@ export function App() {
           ))}
         </nav>
         <div className="page-content">
-          {page === "asset-model" ? (
+          {page === "how-to" ? (
+            <HowToPage onNavigate={(p) => setPage(p as Page)} />
+          ) : page === "asset-model" ? (
             <div className="main-layout">
               <div className="diagram-pane">
                 {activeHead === null ? (
-                  <Triplex onSelectHead={setActiveHead} />
+                  <Triplex
+                    onSelectHead={setActiveHead}
+                    state={state}
+                    selected={selected}
+                    onSelect={setSelected}
+                    usage={usage}
+                  />
                 ) : (
                   <>
                     <div className="diagram-nav">
@@ -201,26 +218,42 @@ export function App() {
                   </>
                 )}
               </div>
-              <div className="side-panel">
-                {activeHead === null ? (
-                  <div className="empty-state">
-                    Select a pump head to view its components
-                  </div>
-                ) : selectedPosition ? (
+              {selectedPosition && (
+                <div className="side-panel">
                   <PartDetail
                     position={selectedPosition}
                     onRefresh={handleRefresh}
                     readOnly={isTimeTraveling}
                   />
-                ) : (
-                  <div className="empty-state">
-                    Select a component on the diagram to view details
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           ) : page === "run-test" ? (
             <RunTest onNavigate={(p) => setPage(p as Page)} />
+          ) : page === "assembly" ? (
+            <Assembly user={user!} />
+          ) : page === "startup" ? (
+            <ProcedurePage user={user!} subPage="startup_procedure" label="Startup Procedure" />
+          ) : page === "shutdown" ? (
+            <ProcedurePage user={user!} subPage="shutdown_procedure" label="Shut-Down Procedure" />
+          ) : page === "weebo" ? (
+            <div className="weebo-page">
+              <div className="weebo-tabs">
+                <button className={`weebo-tab${weeboTab === "records" ? " active" : ""}`} onClick={() => setWeeboTab("records")}>Records</button>
+                <button className={`weebo-tab${weeboTab === "new" ? " active" : ""}`} onClick={() => setWeeboTab("new")}>New Entry</button>
+                <button className={`weebo-tab${weeboTab === "actions" ? " active" : ""}`} onClick={() => setWeeboTab("actions")}>Actions</button>
+                <button className={`weebo-tab${weeboTab === "ask" ? " active" : ""}`} onClick={() => setWeeboTab("ask")}>Ask Weebo</button>
+              </div>
+              {weeboTab === "records" ? (
+                <WeeboRecords />
+              ) : weeboTab === "new" ? (
+                <WeeboNewEntry engineer={user!} onSaved={() => setWeeboTab("records")} />
+              ) : weeboTab === "actions" ? (
+                <WeeboActions />
+              ) : (
+                <WeeboAsk />
+              )}
+            </div>
           ) : (
             <PlaceholderPage title={currentLabel} />
           )}

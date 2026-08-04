@@ -1,4 +1,4 @@
-import type { ChangeEvent, ChangePayload, ComponentPhoto, PartCatalogEntry, PositionState, TestRun, UsageStats } from "../types";
+import type { ActionItem, AskResponse, AssemblyInstruction, AssemblyRun, AssemblyStepLog, ChangeEvent, ChangePayload, ComponentPhoto, MemoEntry, PartCatalogEntry, PositionState, TestRun, UsageStats } from "../types";
 
 const BASE = import.meta.env.DEV ? "/api" : "";
 
@@ -136,6 +136,173 @@ export async function updateNotes(runId: number, notes: string) {
 
 export async function verifyAssembly() {
   return request<AssemblyVerification>("/test-run/verify-assembly");
+}
+
+export async function getMemos(filters: Record<string, string> = {}) {
+  const qs = new URLSearchParams(filters).toString();
+  return request<MemoEntry[]>(`/memos${qs ? `?${qs}` : ""}`);
+}
+
+export async function updateMemo(id: number, fields: Record<string, unknown>) {
+  return request<MemoEntry>(`/memos/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(fields),
+  });
+}
+
+export async function deleteMemo(id: number) {
+  return request<{ status: string }>(`/memos/${id}`, { method: "DELETE" });
+}
+
+export async function getEngineers() {
+  return request<string[]>("/memos/engineers");
+}
+
+export async function transcribeAudio(file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 120000);
+  const res = await fetch(`${BASE}/memos/transcribe`, {
+    method: "POST",
+    credentials: "include",
+    signal: controller.signal,
+    body: form,
+  });
+  clearTimeout(timeout);
+  if (res.status === 401) throw new Error("UNAUTHORIZED");
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || res.statusText);
+  }
+  return res.json() as Promise<{ transcript: string }>;
+}
+
+export async function extractInsights(transcript: string) {
+  return request<Record<string, unknown>>("/memos/extract", {
+    method: "POST",
+    body: JSON.stringify({ transcript }),
+  });
+}
+
+export async function createMemo(fields: Record<string, unknown>) {
+  return request<MemoEntry>("/memos", {
+    method: "POST",
+    body: JSON.stringify(fields),
+  });
+}
+
+export async function getActions(filters: Record<string, string> = {}) {
+  const qs = new URLSearchParams(filters).toString();
+  return request<ActionItem[]>(`/actions${qs ? `?${qs}` : ""}`);
+}
+
+export async function createAction(fields: Record<string, unknown>) {
+  return request<ActionItem>("/actions", {
+    method: "POST",
+    body: JSON.stringify(fields),
+  });
+}
+
+export async function updateAction(id: number, fields: Record<string, unknown>) {
+  return request<ActionItem>(`/actions/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(fields),
+  });
+}
+
+export async function deleteAction(id: number) {
+  return request<{ status: string }>(`/actions/${id}`, { method: "DELETE" });
+}
+
+export async function askWeebo(question: string) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 60000);
+  const res = await fetch(`${BASE}/ask`, {
+    method: "POST",
+    credentials: "include",
+    signal: controller.signal,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ question }),
+  });
+  clearTimeout(timeout);
+  if (res.status === 401) throw new Error("UNAUTHORIZED");
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || res.statusText);
+  }
+  return res.json() as Promise<AskResponse>;
+}
+
+// ── Assembly Instructions ──
+
+export async function getInstructions(subPage: string) {
+  return request<AssemblyInstruction[]>(`/assembly/instructions/${subPage}`);
+}
+
+export async function addInstruction(subPage: string, fields: Record<string, unknown>) {
+  return request<AssemblyInstruction>(`/assembly/instructions/${subPage}`, {
+    method: "POST",
+    body: JSON.stringify(fields),
+  });
+}
+
+export async function updateInstruction(subPage: string, id: number, fields: Record<string, unknown>) {
+  return request<AssemblyInstruction>(`/assembly/instructions/${subPage}/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(fields),
+  });
+}
+
+export async function deleteInstruction(subPage: string, id: number) {
+  return request<{ status: string }>(`/assembly/instructions/${subPage}/${id}`, { method: "DELETE" });
+}
+
+export async function reorderInstructions(subPage: string, order: number[]) {
+  return request<{ status: string }>(`/assembly/instructions/${subPage}/reorder`, {
+    method: "PUT",
+    body: JSON.stringify({ order }),
+  });
+}
+
+// ── Assembly Runs ──
+
+export async function getAssemblyRuns(subPage: string) {
+  return request<AssemblyRun[]>(`/assembly/runs/${subPage}`);
+}
+
+export async function startAssemblyRun(subPage: string, pumpHead: number) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  const res = await fetch(`${BASE}/assembly/runs/${subPage}/start`, {
+    method: "POST",
+    credentials: "include",
+    signal: controller.signal,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ pump_head: pumpHead }),
+  });
+  clearTimeout(timeout);
+  if (res.status === 401) throw new Error("UNAUTHORIZED");
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || res.statusText);
+  }
+  return res.json() as Promise<AssemblyRun>;
+}
+
+export async function getAssemblyRun(runId: number) {
+  return request<AssemblyRun>(`/assembly/runs/${runId}`);
+}
+
+export async function updateAssemblyStep(runId: number, stepId: number, fields: Record<string, unknown>) {
+  return request<AssemblyStepLog>(`/assembly/runs/${runId}/step/${stepId}`, {
+    method: "PUT",
+    body: JSON.stringify(fields),
+  });
+}
+
+export async function completeAssemblyRun(runId: number) {
+  return request<AssemblyRun>(`/assembly/runs/${runId}/complete`, { method: "POST" });
 }
 
 export async function submitFeedback(category: string, message: string) {

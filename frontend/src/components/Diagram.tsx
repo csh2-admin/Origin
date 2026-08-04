@@ -83,17 +83,17 @@ export function Diagram({ state, selected, onSelect, onRemoveInlineDcv, usage, r
   return (
     <svg
       className="diagram-svg"
-      viewBox="0 0 1200 750"
+      viewBox="0 0 1300 750"
       xmlns="http://www.w3.org/2000/svg"
     >
       {/* ---- Flow lines ---- */}
       <line x1="515" y1="170" x2="515" y2="22" className="flow-line" />
       <polygon points="509,28 521,28 515,14" className="flow-arrow" />
-      <text x="535" y="22" className="section-label" textAnchor="start">DISCHARGE</text>
+      <text x="550" y="22" className="section-label" textAnchor="start">DISCHARGE</text>
 
-      <line x1="930" y1="485" x2="1170" y2="485" className="flow-line" />
-      <polygon points="938,479 938,491 926,485" className="flow-arrow" />
-      <text x="1080" y="473" className="section-label">SUCTION</text>
+      <line x1="1020" y1="485" x2="1260" y2="485" className="flow-line" />
+      <polygon points="1028,479 1028,491 1016,485" className="flow-arrow" />
+      <text x="1170" y="473" className="section-label">SUCTION</text>
 
       {/* ---- In-Line DCV (above housing, toggleable) ---- */}
       <Comp id="inline_dcv" x={455} y={50} w={120} h={80}
@@ -105,7 +105,7 @@ export function Diagram({ state, selected, onSelect, onRemoveInlineDcv, usage, r
       {!readOnly && (
         <g className="dcv-toggle" onClick={handleToggle}>
           <rect x={590} y={72} width={52} height={26} rx={13}
-            fill={dcvInstalled ? "#1f6e7d" : "#94a3b8"} />
+            fill={dcvInstalled ? "#2f4d62" : "#94a3b8"} />
           <circle cx={dcvInstalled ? 629 : 603} cy={85} r={10}
             fill="#fff" />
           <text x={650} y={90} fontSize="10" fill="#64748b" fontWeight="600">
@@ -121,7 +121,7 @@ export function Diagram({ state, selected, onSelect, onRemoveInlineDcv, usage, r
       >
         <rect
           className="housing-fill"
-          x={50} y={170} width={880} height={540} rx={3}
+          x={50} y={170} width={960} height={540} rx={3}
         />
         <text x={160} y={200} className="housing-label" textAnchor="start">PUMP HOUSING</text>
         <text x={490} y={698} className="comp-part-label">
@@ -155,11 +155,15 @@ export function Diagram({ state, selected, onSelect, onRemoveInlineDcv, usage, r
         lines={["ICV", "SPRING"]}
         state={state} selected={selected} onSelect={onSelect} usage={usage} />
 
-      <Comp id="head_block" x={635} y={425} w={130} h={120}
+      <Comp id="head_block" x={620} y={425} w={115} h={120}
         lines={["CYLINDER", "HEAD BLOCK"]}
         state={state} selected={selected} onSelect={onSelect} usage={usage} />
 
-      <Comp id="retaining_ring" x={775} y={425} w={130} h={120}
+      <Comp id="press_plate" x={745} y={425} w={115} h={120}
+        lines={["CYL HEAD", "PRESS PLATE"]}
+        state={state} selected={selected} onSelect={onSelect} usage={usage} />
+
+      <Comp id="retaining_ring" x={870} y={425} w={115} h={120}
         lines={["RETAINER", "RING"]}
         state={state} selected={selected} onSelect={onSelect} usage={usage} />
 

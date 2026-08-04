@@ -1,5 +1,7 @@
 import io
+import json
 import os
+import tempfile
 import uuid
 from datetime import datetime, timezone
 
@@ -543,9 +545,762 @@ def verify_assembly(conn):
     })
 
 
+# ── Weebo: Memo Log ──────────────────────────────────────────────────────────
+
+MEMO_COLUMNS = """id, logged_at, engineer, source_file, activity_type,
+    summary, system_performance, maintenance_done,
+    issues_found, action_items, components_affected,
+    duration_hours, severity, additional_notes, raw_transcript,
+    trigger_sim_update"""
+
+
+@bp.route("/memos")
+@require_db
+def list_memos(conn):
+    engineer = request.args.get("engineer", "")
+    activity_type = request.args.get("activity_type", "")
+    severity = request.args.get("severity", "")
+    search = request.args.get("search", "")
+    date_from = request.args.get("date_from", "")
+    date_to = request.args.get("date_to", "")
+
+    conditions = []
+    params = []
+    if engineer:
+        conditions.append("engineer = %s")
+        params.append(engineer)
+    if activity_type:
+        conditions.append("activity_type = %s")
+        params.append(activity_type)
+    if severity:
+        conditions.append("severity = %s")
+        params.append(severity)
+    if search:
+        like = f"%{search}%"
+        conditions.append(
+            "(summary ILIKE %s OR issues_found ILIKE %s OR "
+            "maintenance_done ILIKE %s OR components_affected ILIKE %s OR "
+            "raw_transcript ILIKE %s)"
+        )
+        params.extend([like, like, like, like, like])
+    if date_from:
+        conditions.append("logged_at::date >= %s::date")
+        params.append(date_from)
+    if date_to:
+        conditions.append("logged_at::date <= %s::date")
+        params.append(date_to)
+
+    where = (" WHERE " + " AND ".join(conditions)) if conditions else ""
+    cur = conn.cursor()
+    cur.execute(
+        f"SELECT {MEMO_COLUMNS} FROM memo_log{where} ORDER BY logged_at DESC LIMIT 500",
+        tuple(params),
+    )
+    rows = _dict_rows(cur)
+    return jsonify([_serialize(r) for r in rows])
+
+
+@bp.route("/memos/<int:memo_id>", methods=["PUT"])
+@require_db
+def update_memo(memo_id, conn):
+    body = request.get_json() or {}
+    cur = conn.cursor()
+    cur.execute(
+        f"""
+        UPDATE memo_log SET
+            engineer = %s, activity_type = %s, summary = %s,
+            system_performance = %s, maintenance_done = %s,
+            issues_found = %s, action_items = %s,
+            components_affected = %s, duration_hours = %s,
+            severity = %s, additional_notes = %s,
+            raw_transcript = %s, trigger_sim_update = %s
+        WHERE id = %s
+        RETURNING {MEMO_COLUMNS}
+        """,
+        (
+            body.get("engineer", ""),
+            body.get("activity_type", ""),
+            body.get("summary", ""),
+            body.get("system_performance", ""),
+            body.get("maintenance_done", ""),
+            body.get("issues_found", ""),
+            body.get("action_items", ""),
+            body.get("components_affected", ""),
+            body.get("duration_hours"),
+            body.get("severity", ""),
+            body.get("additional_notes", ""),
+            body.get("raw_transcript", ""),
+            bool(body.get("trigger_sim_update", False)),
+            memo_id,
+        ),
+    )
+    row = cur.fetchone()
+    if not row:
+        return jsonify({"detail": "Not found"}), 404
+    result = _dict_row_from(cur.description, row)
+    conn.commit()
+    return jsonify(_serialize(result))
+
+
+@bp.route("/memos/<int:memo_id>", methods=["DELETE"])
+@require_db
+def delete_memo(memo_id, conn):
+    cur = conn.cursor()
+    cur.execute("DELETE FROM memo_log WHERE id = %s", (memo_id,))
+    conn.commit()
+    return jsonify({"status": "deleted"})
+
+
+@bp.route("/memos/engineers")
+@require_db
+def list_engineers(conn):
+    cur = conn.cursor()
+    cur.execute("SELECT DISTINCT engineer FROM memo_log ORDER BY engineer")
+    return jsonify([r[0] for r in cur.fetchall()])
+
+
+@bp.route("/memos/transcribe", methods=["POST"])
+@require_db
+def transcribe_audio(conn):
+    if "file" not in request.files:
+        return jsonify({"detail": "No audio file provided"}), 400
+    f = request.files["file"]
+    suffix = os.path.splitext(f.filename or ".wav")[1] or ".wav"
+    audio_bytes = f.read()
+    try:
+        import whisper
+        model = whisper.load_model("base")
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+            tmp.write(audio_bytes)
+            tmp_path = tmp.name
+        result = model.transcribe(tmp_path, fp16=False)
+        transcript = result["text"].strip()
+        os.unlink(tmp_path)
+        return jsonify({"transcript": transcript})
+    except Exception as e:
+        return jsonify({"detail": str(e)}), 500
+
+
+PRODUCT_DESCRIPTION = (
+    "a hardware product under test; entries describe daily system performance "
+    "observations and maintenance activities performed by test engineers."
+)
+
+EXTRACT_SYSTEM_PROMPT = f"""You are a technical data extraction assistant for a hardware testing team.
+The engineer has recorded a voice memo about {PRODUCT_DESCRIPTION}.
+Your job is to extract structured information from the transcript and return ONLY valid JSON.
+
+Return a JSON object with exactly these keys (use empty string "" if a field is not mentioned):
+
+{{
+  "activity_type":     "Classify the primary activity: Action Item | Qualitative Observation | System Maintenance | Performance - Quantitative | Hypothesis | Other",
+  "summary":             "1-2 sentence plain-English summary of the entry",
+  "system_performance":  "Any observations about how the system/hardware performed",
+  "maintenance_done":    "Maintenance or repair activities completed",
+  "issues_found":        "Problems, failures, or unexpected behaviours observed",
+  "action_items":        "Follow-up tasks or things that need to happen next",
+  "components_affected": "Specific components, subsystems, or parts mentioned",
+  "duration_hours":      "Total time spent (numeric string, e.g. '2.5', or '' if not mentioned)",
+  "severity":            "Overall severity: Critical | High | Medium | Low | None (pick one)",
+  "additional_notes":    "Any other relevant details not captured above",
+  "trigger_sim_update":  "Boolean (true/false). Set to true ONLY if the entry contains new data or parameter changes that should trigger a simulation update. Default false."
+}}
+
+Return ONLY the JSON object. No markdown, no commentary."""
+
+ACTIVITY_OPTIONS = [
+    "Action Item", "Qualitative Observation", "System Maintenance",
+    "Performance - Quantitative", "Hypothesis", "Other",
+]
+
+
+@bp.route("/memos/extract", methods=["POST"])
+@require_db
+def extract_insights(conn):
+    body = request.get_json() or {}
+    transcript = (body.get("transcript") or "").strip()
+    if not transcript:
+        return jsonify({"detail": "Transcript is required"}), 400
+    try:
+        import anthropic
+        api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+        if not api_key:
+            return jsonify({"detail": "ANTHROPIC_API_KEY not configured"}), 500
+        client = anthropic.Anthropic(api_key=api_key)
+        message = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=1024,
+            system=EXTRACT_SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": f"Transcript:\n\n{transcript}"}],
+        )
+        raw = message.content[0].text.strip()
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+            raw = raw.strip()
+        data = json.loads(raw)
+        raw_act = data.get("activity_type", "").strip()
+        data["activity_type"] = next(
+            (o for o in ACTIVITY_OPTIONS if o.lower() == raw_act.lower()), "Other"
+        )
+        raw_tsu = data.get("trigger_sim_update", False)
+        if isinstance(raw_tsu, str):
+            data["trigger_sim_update"] = raw_tsu.strip().lower() in ("true", "yes", "1")
+        else:
+            data["trigger_sim_update"] = bool(raw_tsu)
+        return jsonify(data)
+    except json.JSONDecodeError:
+        return jsonify({"detail": "Failed to parse Claude response"}), 500
+    except Exception as e:
+        return jsonify({"detail": str(e)}), 500
+
+
+@bp.route("/memos", methods=["POST"])
+@require_db
+def create_memo(conn):
+    body = request.get_json() or {}
+    cur = conn.cursor()
+
+    def _dur(v):
+        if v is None or str(v).strip() == "":
+            return None
+        try:
+            return float(v)
+        except (ValueError, TypeError):
+            return None
+
+    cur.execute(
+        f"""
+        INSERT INTO memo_log (
+            engineer, source_file, activity_type,
+            summary, system_performance, maintenance_done,
+            issues_found, action_items, components_affected,
+            duration_hours, severity, additional_notes,
+            raw_transcript, raw_insights_json, trigger_sim_update
+        ) VALUES (
+            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+        )
+        RETURNING {MEMO_COLUMNS}
+        """,
+        (
+            body.get("engineer", ""),
+            body.get("source_file", ""),
+            body.get("activity_type", ""),
+            body.get("summary", ""),
+            body.get("system_performance", ""),
+            body.get("maintenance_done", ""),
+            body.get("issues_found", ""),
+            body.get("action_items", ""),
+            body.get("components_affected", ""),
+            _dur(body.get("duration_hours")),
+            body.get("severity", ""),
+            body.get("additional_notes", ""),
+            body.get("raw_transcript", ""),
+            json.dumps(body.get("raw_insights", {})),
+            bool(body.get("trigger_sim_update", False)),
+        ),
+    )
+    row = _dict_row(cur)
+    conn.commit()
+
+    action_text = body.get("action_items", "").strip()
+    if action_text:
+        items = _parse_action_items(action_text)
+        engineer = body.get("engineer", "")
+        memo_id = row.get("id")
+        for item in items:
+            cur.execute(
+                """
+                INSERT INTO action_items (memo_id, engineer, action_text, responsible)
+                VALUES (%s, %s, %s, %s)
+                """,
+                (memo_id, engineer, item, engineer),
+            )
+        conn.commit()
+
+    return jsonify(_serialize(row)), 201
+
+
+def _parse_action_items(text):
+    import re
+    items = []
+    for line in re.split(r"[;\n]", text):
+        cleaned = re.sub(r"^[\s\-\*\d\.\)]+", "", line).strip()
+        if cleaned:
+            items.append(cleaned)
+    return items
+
+
 def _dict_row_from(description, row):
     cols = [d[0] for d in description]
     return dict(zip(cols, row))
+
+
+ACTION_COLUMNS = "id, created_at, updated_at, memo_id, engineer, action_text, status, responsible, due_date, notes"
+
+
+@bp.route("/actions", methods=["GET"])
+@require_db
+def list_actions(conn):
+    cur = conn.cursor()
+    conditions = []
+    params = []
+    engineer = request.args.get("engineer", "").strip()
+    status = request.args.get("status", "").strip()
+    search = request.args.get("search", "").strip()
+    if engineer:
+        conditions.append("engineer = %s")
+        params.append(engineer)
+    if status:
+        conditions.append("status = %s")
+        params.append(status)
+    if search:
+        conditions.append("action_text ILIKE %s")
+        params.append(f"%{search}%")
+    where = (" WHERE " + " AND ".join(conditions)) if conditions else ""
+    cur.execute(
+        f"SELECT {ACTION_COLUMNS} FROM action_items{where} ORDER BY created_at DESC",
+        params,
+    )
+    rows = _dict_rows(cur)
+    return jsonify([_serialize(r) for r in rows])
+
+
+@bp.route("/actions", methods=["POST"])
+@require_db
+def create_action(conn):
+    body = request.get_json() or {}
+    action_text = (body.get("action_text") or "").strip()
+    if not action_text:
+        return jsonify({"detail": "action_text is required"}), 400
+    cur = conn.cursor()
+    cur.execute(
+        f"""
+        INSERT INTO action_items (engineer, action_text, status, responsible, due_date, notes, memo_id)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        RETURNING {ACTION_COLUMNS}
+        """,
+        (
+            body.get("engineer", ""),
+            action_text,
+            body.get("status", "Not Started"),
+            body.get("responsible", ""),
+            body.get("due_date") or None,
+            body.get("notes", ""),
+            body.get("memo_id") or None,
+        ),
+    )
+    row = _dict_row(cur)
+    conn.commit()
+    return jsonify(_serialize(row)), 201
+
+
+@bp.route("/actions/<int:action_id>", methods=["PUT"])
+@require_db
+def update_action(action_id, conn):
+    body = request.get_json() or {}
+    allowed = {"action_text", "status", "responsible", "due_date", "notes"}
+    sets = []
+    params = []
+    for key in allowed:
+        if key in body:
+            val = body[key]
+            if key == "due_date" and (val is None or str(val).strip() == ""):
+                val = None
+            sets.append(f"{key} = %s")
+            params.append(val)
+    if not sets:
+        return jsonify({"detail": "No fields to update"}), 400
+    sets.append("updated_at = NOW()")
+    params.append(action_id)
+    cur = conn.cursor()
+    cur.execute(
+        f"UPDATE action_items SET {', '.join(sets)} WHERE id = %s RETURNING {ACTION_COLUMNS}",
+        params,
+    )
+    row = _dict_row(cur)
+    if not row:
+        return jsonify({"detail": "Not found"}), 404
+    conn.commit()
+    return jsonify(_serialize(row))
+
+
+@bp.route("/actions/<int:action_id>", methods=["DELETE"])
+@require_db
+def delete_action(action_id, conn):
+    cur = conn.cursor()
+    cur.execute("DELETE FROM action_items WHERE id = %s", (action_id,))
+    conn.commit()
+    if cur.rowcount == 0:
+        return jsonify({"detail": "Not found"}), 404
+    return jsonify({"status": "deleted"})
+
+
+DB_SCHEMA = """Tables:
+1. memo_log — engineer voice memos and observations
+   Columns: id (bigint PK), logged_at (timestamptz), engineer (text), source_file (text),
+   activity_type (text: 'Action Item','Qualitative Observation','System Maintenance','Performance - Quantitative','Hypothesis','Other'),
+   summary (text), system_performance (text), maintenance_done (text), issues_found (text),
+   action_items (text), components_affected (text), duration_hours (numeric),
+   severity (text: 'Critical','High','Medium','Low','None'), additional_notes (text),
+   raw_transcript (text), trigger_sim_update (boolean)
+
+2. action_items — individual action items parsed from memos
+   Columns: id (bigserial PK), created_at (timestamptz), updated_at (timestamptz),
+   memo_id (bigint, references memo_log.id), engineer (text), action_text (text),
+   status (text: 'Not Started','In Progress','Complete'), responsible (text),
+   due_date (date), notes (text)
+
+3. change_events — component change log for the pump asset model
+   Columns: id (bigserial), effective_time (timestamptz), recorded_time (timestamptz),
+   position (text), removed_part_number (text), installed_part_number (text),
+   changed_by (text), note (text)
+
+4. positions — valid pump component positions
+   Columns: name (text PK), display_name (text), description (text)
+"""
+
+ASK_SYSTEM_PROMPT = f"""You are a SQL assistant for a cryogenic pump test engineering database (PostgreSQL/TimescaleDB).
+
+{DB_SCHEMA}
+
+Rules:
+- Generate ONLY a SELECT or WITH ... SELECT query. Never INSERT, UPDATE, DELETE, DROP, ALTER, or any DDL.
+- Use ILIKE for text searches.
+- LIMIT results to 200 rows max.
+- Return ONLY the raw SQL query, no markdown, no explanation.
+- For date filtering use logged_at for memo_log, created_at for action_items, effective_time for change_events.
+- When asked about "recent" items, order by the appropriate timestamp DESC and LIMIT.
+"""
+
+SUMMARIZE_PROMPT = """You are a helpful assistant for test engineers. Given the user's question and the database query results below, provide a clear, concise answer. Use bullet points or tables where helpful. If no results were returned, say so clearly.
+
+Question: {question}
+
+Results (JSON):
+{results}"""
+
+
+@bp.route("/ask", methods=["POST"])
+@require_db
+def ask_weebo(conn):
+    body = request.get_json() or {}
+    question = (body.get("question") or "").strip()
+    if not question:
+        return jsonify({"detail": "Question is required"}), 400
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        return jsonify({"detail": "ANTHROPIC_API_KEY not configured"}), 500
+
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=api_key)
+
+        sql_msg = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=1024,
+            system=ASK_SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": question}],
+        )
+        sql = sql_msg.content[0].text.strip()
+        if sql.startswith("```"):
+            sql = sql.split("```")[1]
+            if sql.startswith("sql"):
+                sql = sql[3:]
+            sql = sql.strip()
+
+        sql_upper = sql.strip().upper()
+        if not (sql_upper.startswith("SELECT") or sql_upper.startswith("WITH")):
+            return jsonify({"detail": "Only SELECT queries are allowed", "sql": sql}), 400
+        for forbidden in ["INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "TRUNCATE", "CREATE", "GRANT", "REVOKE"]:
+            if f" {forbidden} " in f" {sql_upper} " or sql_upper.startswith(forbidden):
+                return jsonify({"detail": f"Forbidden SQL operation: {forbidden}", "sql": sql}), 400
+
+        cur = conn.cursor()
+        cur.execute(sql)
+        rows = _dict_rows(cur)
+        results = [_serialize(r) for r in rows[:50]]
+
+        summary_msg = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=1024,
+            messages=[{
+                "role": "user",
+                "content": SUMMARIZE_PROMPT.format(
+                    question=question,
+                    results=json.dumps(results, default=str),
+                ),
+            }],
+        )
+        answer = summary_msg.content[0].text.strip()
+
+        return jsonify({
+            "answer": answer,
+            "sql": sql,
+            "row_count": len(rows),
+            "results": results,
+        })
+
+    except Exception as e:
+        return jsonify({"detail": str(e)}), 500
+
+
+# ── Assembly Instructions ────────────────────────────────────────────────────
+
+VALID_SUB_PAGES = {"seal_installation", "pump_assembly", "pump_installation", "startup_procedure", "shutdown_procedure"}
+
+INSTRUCTION_COLUMNS = "id, sub_page, step_order, action, pns_tags, tools, torque_spec, created_by, updated_at"
+
+
+@bp.route("/assembly/instructions/<sub_page>")
+@require_db
+def list_instructions(sub_page, conn):
+    if sub_page not in VALID_SUB_PAGES:
+        return jsonify({"detail": "Invalid sub_page"}), 400
+    cur = conn.cursor()
+    cur.execute(
+        f"SELECT {INSTRUCTION_COLUMNS} FROM assembly_instructions WHERE sub_page = %s ORDER BY step_order",
+        (sub_page,),
+    )
+    return jsonify([_serialize(r) for r in _dict_rows(cur)])
+
+
+@bp.route("/assembly/instructions/<sub_page>", methods=["POST"])
+@require_db
+def add_instruction(sub_page, conn):
+    if sub_page not in VALID_SUB_PAGES:
+        return jsonify({"detail": "Invalid sub_page"}), 400
+    cur = conn.cursor()
+    cur.execute("SELECT session_user")
+    user = cur.fetchone()[0]
+    if user != "engineer1":
+        return jsonify({"detail": "Only engineer1 can edit instructions"}), 403
+    body = request.get_json() or {}
+    cur.execute(
+        "SELECT COALESCE(MAX(step_order), 0) + 1 FROM assembly_instructions WHERE sub_page = %s",
+        (sub_page,),
+    )
+    next_order = cur.fetchone()[0]
+    cur.execute(
+        f"""
+        INSERT INTO assembly_instructions (sub_page, step_order, action, pns_tags, tools, torque_spec)
+        VALUES (%s, %s, %s, %s, %s, %s)
+        RETURNING {INSTRUCTION_COLUMNS}
+        """,
+        (
+            sub_page,
+            body.get("step_order", next_order),
+            body.get("action", ""),
+            body.get("pns_tags", ""),
+            body.get("tools", ""),
+            body.get("torque_spec", ""),
+        ),
+    )
+    row = _dict_row(cur)
+    conn.commit()
+    return jsonify(_serialize(row)), 201
+
+
+@bp.route("/assembly/instructions/<sub_page>/<int:instr_id>", methods=["PUT"])
+@require_db
+def update_instruction(sub_page, instr_id, conn):
+    cur = conn.cursor()
+    cur.execute("SELECT session_user")
+    user = cur.fetchone()[0]
+    if user != "engineer1":
+        return jsonify({"detail": "Only engineer1 can edit instructions"}), 403
+    body = request.get_json() or {}
+    allowed = {"action", "pns_tags", "tools", "torque_spec", "step_order"}
+    sets = []
+    params = []
+    for key in allowed:
+        if key in body:
+            sets.append(f"{key} = %s")
+            params.append(body[key])
+    if not sets:
+        return jsonify({"detail": "No fields to update"}), 400
+    sets.append("updated_at = NOW()")
+    params.extend([instr_id, sub_page])
+    cur.execute(
+        f"UPDATE assembly_instructions SET {', '.join(sets)} WHERE id = %s AND sub_page = %s RETURNING {INSTRUCTION_COLUMNS}",
+        params,
+    )
+    row = cur.fetchone()
+    if not row:
+        return jsonify({"detail": "Not found"}), 404
+    result = _dict_row_from(cur.description, row)
+    conn.commit()
+    return jsonify(_serialize(result))
+
+
+@bp.route("/assembly/instructions/<sub_page>/<int:instr_id>", methods=["DELETE"])
+@require_db
+def delete_instruction(sub_page, instr_id, conn):
+    cur = conn.cursor()
+    cur.execute("SELECT session_user")
+    user = cur.fetchone()[0]
+    if user != "engineer1":
+        return jsonify({"detail": "Only engineer1 can edit instructions"}), 403
+    cur.execute(
+        "DELETE FROM assembly_instructions WHERE id = %s AND sub_page = %s",
+        (instr_id, sub_page),
+    )
+    conn.commit()
+    if cur.rowcount == 0:
+        return jsonify({"detail": "Not found"}), 404
+    return jsonify({"status": "deleted"})
+
+
+@bp.route("/assembly/instructions/<sub_page>/reorder", methods=["PUT"])
+@require_db
+def reorder_instructions(sub_page, conn):
+    cur = conn.cursor()
+    cur.execute("SELECT session_user")
+    user = cur.fetchone()[0]
+    if user != "engineer1":
+        return jsonify({"detail": "Only engineer1 can edit instructions"}), 403
+    body = request.get_json() or {}
+    order = body.get("order", [])
+    for idx, instr_id in enumerate(order, 1):
+        cur.execute(
+            "UPDATE assembly_instructions SET step_order = %s WHERE id = %s AND sub_page = %s",
+            (idx, instr_id, sub_page),
+        )
+    conn.commit()
+    return jsonify({"status": "ok"})
+
+
+# ── Assembly Runs ────────────────────────────────────────────────────────────
+
+RUN_COLUMNS = "id, sub_page, pump_head, started_at, completed_at, started_by, completed_by"
+STEP_LOG_COLUMNS = "id, run_id, instruction_id, step_order, checked_at, torque_actual, notes"
+
+
+@bp.route("/assembly/runs/<sub_page>")
+@require_db
+def list_assembly_runs(sub_page, conn):
+    if sub_page not in VALID_SUB_PAGES:
+        return jsonify({"detail": "Invalid sub_page"}), 400
+    cur = conn.cursor()
+    cur.execute(
+        f"SELECT {RUN_COLUMNS} FROM assembly_runs WHERE sub_page = %s ORDER BY started_at DESC LIMIT 50",
+        (sub_page,),
+    )
+    return jsonify([_serialize(r) for r in _dict_rows(cur)])
+
+
+@bp.route("/assembly/runs/<sub_page>/start", methods=["POST"])
+@require_db
+def start_assembly_run(sub_page, conn):
+    if sub_page not in VALID_SUB_PAGES:
+        return jsonify({"detail": "Invalid sub_page"}), 400
+    body = request.get_json() or {}
+    pump_head = body.get("pump_head", 1)
+    if pump_head not in (1, 2, 3):
+        return jsonify({"detail": "pump_head must be 1, 2, or 3"}), 400
+    cur = conn.cursor()
+    cur.execute(
+        f"""
+        INSERT INTO assembly_runs (sub_page, pump_head)
+        VALUES (%s, %s)
+        RETURNING {RUN_COLUMNS}
+        """,
+        (sub_page, pump_head),
+    )
+    run = _dict_row(cur)
+    run_id = run["id"]
+    cur.execute(
+        "SELECT id, step_order FROM assembly_instructions WHERE sub_page = %s ORDER BY step_order",
+        (sub_page,),
+    )
+    instructions = cur.fetchall()
+    for instr_id, step_order in instructions:
+        cur.execute(
+            "INSERT INTO assembly_step_logs (run_id, instruction_id, step_order) VALUES (%s, %s, %s)",
+            (run_id, instr_id, step_order),
+        )
+    conn.commit()
+    cur.execute(
+        f"SELECT {STEP_LOG_COLUMNS} FROM assembly_step_logs WHERE run_id = %s ORDER BY step_order",
+        (run_id,),
+    )
+    steps = [_serialize(r) for r in _dict_rows(cur)]
+    result = _serialize(run)
+    result["steps"] = steps
+    return jsonify(result), 201
+
+
+@bp.route("/assembly/runs/<int:run_id>")
+@require_db
+def get_assembly_run(run_id, conn):
+    cur = conn.cursor()
+    cur.execute(f"SELECT {RUN_COLUMNS} FROM assembly_runs WHERE id = %s", (run_id,))
+    row = cur.fetchone()
+    if not row:
+        return jsonify({"detail": "Not found"}), 404
+    run = _serialize(_dict_row_from(cur.description, row))
+    cur.execute(
+        f"SELECT {STEP_LOG_COLUMNS} FROM assembly_step_logs WHERE run_id = %s ORDER BY step_order",
+        (run_id,),
+    )
+    run["steps"] = [_serialize(r) for r in _dict_rows(cur)]
+    cur.execute(
+        f"SELECT {INSTRUCTION_COLUMNS} FROM assembly_instructions WHERE sub_page = %s ORDER BY step_order",
+        (run["sub_page"],),
+    )
+    run["instructions"] = [_serialize(r) for r in _dict_rows(cur)]
+    return jsonify(run)
+
+
+@bp.route("/assembly/runs/<int:run_id>/step/<int:step_id>", methods=["PUT"])
+@require_db
+def update_assembly_step(run_id, step_id, conn):
+    body = request.get_json() or {}
+    cur = conn.cursor()
+    sets = []
+    params = []
+    if "checked" in body:
+        if body["checked"]:
+            sets.append("checked_at = NOW()")
+        else:
+            sets.append("checked_at = NULL")
+    if "torque_actual" in body:
+        sets.append("torque_actual = %s")
+        params.append(body["torque_actual"])
+    if "notes" in body:
+        sets.append("notes = %s")
+        params.append(body["notes"])
+    if not sets:
+        return jsonify({"detail": "No fields to update"}), 400
+    params.extend([step_id, run_id])
+    cur.execute(
+        f"UPDATE assembly_step_logs SET {', '.join(sets)} WHERE id = %s AND run_id = %s RETURNING {STEP_LOG_COLUMNS}",
+        params,
+    )
+    row = cur.fetchone()
+    if not row:
+        return jsonify({"detail": "Not found"}), 404
+    result = _dict_row_from(cur.description, row)
+    conn.commit()
+    return jsonify(_serialize(result))
+
+
+@bp.route("/assembly/runs/<int:run_id>/complete", methods=["POST"])
+@require_db
+def complete_assembly_run(run_id, conn):
+    cur = conn.cursor()
+    cur.execute(
+        f"UPDATE assembly_runs SET completed_at = NOW(), completed_by = session_user WHERE id = %s AND completed_at IS NULL RETURNING {RUN_COLUMNS}",
+        (run_id,),
+    )
+    row = cur.fetchone()
+    if not row:
+        return jsonify({"detail": "Not found or already completed"}), 404
+    result = _dict_row_from(cur.description, row)
+    conn.commit()
+    return jsonify(_serialize(result))
 
 
 @bp.route("/feedback", methods=["POST"])
