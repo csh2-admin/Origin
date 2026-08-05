@@ -502,12 +502,12 @@ function AssemblyWizard({
           <tr>
             <th style={{ width: "2.5rem" }}></th>
             <th style={{ width: "3rem" }}>Step</th>
-            <th>Action</th>
+            <th style={{ width: "30%" }}>Action</th>
             {!simplified && <th>PNs or Tags</th>}
             {!simplified && <th>Tools</th>}
             {!simplified && <th>Torque Spec</th>}
             {!simplified && <th>Torque Actual</th>}
-            <th>Notes</th>
+            <th style={{ width: "20%" }}>Notes</th>
             <th>Completed At</th>
           </tr>
         </thead>

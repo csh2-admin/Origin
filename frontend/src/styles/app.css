@@ -2388,7 +2388,7 @@ textarea {
 }
 
 .asm-notes-input {
-  width: 140px;
+  width: 100%;
   padding: 0.25rem 0.4rem;
   border: none;
   border-radius: 3px;
