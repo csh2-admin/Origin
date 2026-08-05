@@ -452,6 +452,13 @@ function AssemblyWizard({
     } catch { /* ignore */ }
   }
 
+  async function handleNotesChange(step: AssemblyStepLog, value: string) {
+    if (isCompleted) return;
+    try {
+      await updateAssemblyStep(run.id, step.id, { notes: value });
+    } catch { /* ignore */ }
+  }
+
   async function handleComplete() {
     setCompleting(true);
     try {
@@ -500,6 +507,7 @@ function AssemblyWizard({
             {!simplified && <th>Tools</th>}
             {!simplified && <th>Torque Spec</th>}
             {!simplified && <th>Torque Actual</th>}
+            <th>Notes</th>
             <th>Completed At</th>
           </tr>
         </thead>
@@ -538,6 +546,16 @@ function AssemblyWizard({
                     )}
                   </td>
                 )}
+                <td>
+                  <input
+                    type="text"
+                    className="asm-notes-input"
+                    defaultValue={step.notes ?? ""}
+                    onBlur={(e) => handleNotesChange(step, e.target.value)}
+                    disabled={isCompleted}
+                    placeholder=""
+                  />
+                </td>
                 <td className="asm-ts-cell">
                   {step.checked_at ? new Date(step.checked_at).toLocaleTimeString() : ""}
                 </td>

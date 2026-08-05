@@ -2387,6 +2387,17 @@ textarea {
   color: var(--text-primary);
 }
 
+.asm-notes-input {
+  width: 140px;
+  padding: 0.25rem 0.4rem;
+  border: none;
+  border-radius: 3px;
+  font-size: 0.82rem;
+  background: var(--neu-surface);
+  box-shadow: var(--shadow-inset);
+  color: var(--text-primary);
+}
+
 .asm-na {
   color: var(--text-muted);
   font-style: italic;
