@@ -191,7 +191,7 @@ export function RunTest({ onNavigate }: Props) {
         </div>
       )}
 
-      {/* No active run — show history + start form */}
+      {/* No active run — show start form */}
       {!run && (
         <div className="run-test-start">
           <h2>Run Test</h2>
@@ -206,45 +206,6 @@ export function RunTest({ onNavigate }: Props) {
                 <span style={{ marginLeft: "0.5rem", opacity: 0.7 }}>
                   (Step: {stepLabel(activeInHistory.current_step)}, {duration(activeInHistory.started_at, null)} elapsed)
                 </span>
-              </div>
-            </div>
-          )}
-
-          {/* Test run history */}
-          {history.length > 0 && (
-            <div className="test-run-history">
-              <h3>Test Run History</h3>
-              <div style={{ overflowX: "auto" }}>
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Run #</th>
-                      <th>Type</th>
-                      <th>Started</th>
-                      <th>Started By</th>
-                      <th>Status</th>
-                      <th>Duration</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {history.map((h) => (
-                      <tr key={h.id} className={!h.completed_at ? "active-row" : ""}>
-                        <td>{h.id}</td>
-                        <td>{h.test_type === "simplex" ? "Simplex" : "Triplex"}</td>
-                        <td>{fmtTime(h.started_at)}</td>
-                        <td>{h.started_by}</td>
-                        <td>
-                          {h.completed_at ? (
-                            <span className="status-badge completed">Completed</span>
-                          ) : (
-                            <span className="status-badge in-progress">In Progress — {stepLabel(h.current_step)}</span>
-                          )}
-                        </td>
-                        <td>{duration(h.started_at, h.completed_at)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
               </div>
             </div>
           )}
@@ -290,6 +251,45 @@ export function RunTest({ onNavigate }: Props) {
               A test run is currently in progress. Wait for it to complete or ask {activeInHistory.started_by} to finish it before starting a new one.
             </p>
           )}
+        </div>
+      )}
+
+      {/* Test run history — always visible */}
+      {history.length > 0 && (
+        <div className="test-run-history" style={{ textAlign: "left", maxWidth: 720, margin: "1.5rem auto 0" }}>
+          <h3>Test Run History</h3>
+          <div style={{ overflowX: "auto" }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Run #</th>
+                  <th>Type</th>
+                  <th>Started</th>
+                  <th>Started By</th>
+                  <th>Status</th>
+                  <th>Duration</th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.map((h) => (
+                  <tr key={h.id} className={!h.completed_at ? "active-row" : ""}>
+                    <td>{h.id}</td>
+                    <td>{h.test_type === "simplex" ? "Simplex" : "Triplex"}</td>
+                    <td>{fmtTime(h.started_at)}</td>
+                    <td>{h.started_by}</td>
+                    <td>
+                      {h.completed_at ? (
+                        <span className="status-badge completed">Completed</span>
+                      ) : (
+                        <span className="status-badge in-progress">In Progress — {stepLabel(h.current_step)}</span>
+                      )}
+                    </td>
+                    <td>{duration(h.started_at, h.completed_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
