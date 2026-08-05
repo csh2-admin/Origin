@@ -7,3 +7,8 @@ services:
       - backend/.env
     environment:
       - FLASK_APP=backend.app.main:app
+    volumes:
+      - uploads:/app/backend/uploads
+
+volumes:
+  uploads:
