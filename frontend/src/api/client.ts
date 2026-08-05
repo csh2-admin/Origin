@@ -44,9 +44,16 @@ export async function getHistory(position: string) {
   return request<ChangeEvent[]>(`/component/${encodeURIComponent(position)}/history`);
 }
 
+const _catalogCache = new Map<string, PartCatalogEntry[]>();
+
 export async function getPartsCatalog(position?: string) {
+  const key = position ?? "__all__";
+  const cached = _catalogCache.get(key);
+  if (cached) return cached;
   const qs = position ? `?position=${encodeURIComponent(position)}` : "";
-  return request<PartCatalogEntry[]>(`/parts-catalog${qs}`);
+  const data = await request<PartCatalogEntry[]>(`/parts-catalog${qs}`);
+  _catalogCache.set(key, data);
+  return data;
 }
 
 export async function getAllUsage() {

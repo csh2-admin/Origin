@@ -2,6 +2,7 @@ import io
 import json
 import os
 import tempfile
+import time
 import uuid
 from datetime import datetime, timezone
 
@@ -95,19 +96,24 @@ def get_state(conn):
     return jsonify([_serialize(r) for r in _dict_rows(cur)])
 
 
+_parts_catalog_cache: dict | None = None
+_parts_catalog_ts: float = 0
+
 @bp.route("/parts-catalog")
 @require_db
 def parts_catalog(conn):
-    position = request.args.get("position")
-    cur = conn.cursor()
-    if position:
-        cur.execute(
-            "SELECT part_number, position, description FROM parts_catalog WHERE position = %s ORDER BY part_number",
-            (position,),
-        )
-    else:
+    global _parts_catalog_cache, _parts_catalog_ts
+    if _parts_catalog_cache is None or time.time() - _parts_catalog_ts > 300:
+        cur = conn.cursor()
         cur.execute("SELECT part_number, position, description FROM parts_catalog ORDER BY position, part_number")
-    return jsonify([_serialize(r) for r in _dict_rows(cur)])
+        _parts_catalog_cache = [_serialize(r) for r in _dict_rows(cur)]
+        _parts_catalog_ts = time.time()
+    position = request.args.get("position")
+    if position:
+        data = [p for p in _parts_catalog_cache if p.get("position") == position]
+    else:
+        data = _parts_catalog_cache
+    return jsonify(data)
 
 
 @bp.route("/component/<position>/history")
