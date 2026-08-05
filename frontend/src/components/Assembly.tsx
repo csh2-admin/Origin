@@ -430,18 +430,19 @@ function AssemblyWizard({
   onRefresh: () => void;
   onClose: () => void;
 }) {
-  const steps = run.steps ?? [];
+  const [localSteps, setLocalSteps] = useState(run.steps ?? []);
+  useEffect(() => { setLocalSteps(run.steps ?? []); }, [run]);
+  const steps = localSteps;
   const instrMap = new Map(instructions.map((i) => [i.id, i]));
   const [completing, setCompleting] = useState(false);
   const allChecked = steps.length > 0 && steps.every((s) => s.checked_at);
   const isCompleted = !!run.completed_at;
 
-  async function toggleStep(step: AssemblyStepLog) {
+  function toggleStep(step: AssemblyStepLog) {
     if (isCompleted) return;
-    try {
-      await updateAssemblyStep(run.id, step.id, { checked: !step.checked_at });
-      onRefresh();
-    } catch { /* ignore */ }
+    const now = step.checked_at ? null : new Date().toISOString();
+    setLocalSteps((prev) => prev.map((s) => s.id === step.id ? { ...s, checked_at: now } : s));
+    updateAssemblyStep(run.id, step.id, { checked: !step.checked_at }).catch(() => onRefresh());
   }
 
   async function handleTorqueChange(step: AssemblyStepLog, value: string) {
