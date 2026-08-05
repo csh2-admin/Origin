@@ -48,7 +48,7 @@ export function Assembly({ user }: Props) {
 export function ProcedurePage({ user, subPage, label }: { user: string; subPage: string; label: string }) {
   return (
     <div className="assembly-page">
-      <AssemblySubPage subPage={subPage} user={user} labelOverride={label} simplified />
+      <AssemblySubPage key={subPage} subPage={subPage} user={user} labelOverride={label} simplified />
     </div>
   );
 }
