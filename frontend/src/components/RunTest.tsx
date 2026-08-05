@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   advanceTestRun,
   getActiveTestRun,
+  getTestRunHistory,
   startTestRun,
   updateChecklist,
   updateNotes,
@@ -50,9 +51,30 @@ function parseChecklist(run: TestRun): Record<string, boolean> {
   }
 }
 
+function fmtTime(iso: string): string {
+  return new Date(iso).toLocaleString(undefined, {
+    month: "short", day: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
+}
+
+function stepLabel(step: string): string {
+  const s = STEPS.find((s) => s.id === step);
+  return s ? s.label : step;
+}
+
+function duration(start: string, end: string | null): string {
+  const ms = (end ? new Date(end).getTime() : Date.now()) - new Date(start).getTime();
+  const mins = Math.floor(ms / 60000);
+  if (mins < 60) return `${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  return `${hrs}h ${mins % 60}m`;
+}
+
 export function RunTest({ onNavigate }: Props) {
   const [run, setRun] = useState<TestRun | null>(null);
   const [loading, setLoading] = useState(true);
+  const [history, setHistory] = useState<TestRun[]>([]);
   const [verification, setVerification] = useState<AssemblyVerification | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [checklist, setChecklist] = useState<Record<string, boolean>>({});
@@ -73,7 +95,14 @@ export function RunTest({ onNavigate }: Props) {
     setLoading(false);
   }, []);
 
-  useEffect(() => { loadRun(); }, [loadRun]);
+  const loadHistory = useCallback(async () => {
+    try {
+      const h = await getTestRunHistory();
+      setHistory(h);
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => { loadRun(); loadHistory(); }, [loadRun, loadHistory]);
 
   async function handleStart() {
     if (!testType) return;
@@ -82,6 +111,7 @@ export function RunTest({ onNavigate }: Props) {
       const r = await startTestRun(testType);
       setRun(r);
       setChecklist({});
+      loadHistory();
     } catch (err) {
       if (err instanceof Error && err.message === "UNAUTHORIZED") throw err;
       alert(err instanceof Error ? err.message : "Failed to start");
@@ -108,6 +138,7 @@ export function RunTest({ onNavigate }: Props) {
       setRun(r);
       setChecklist(parseChecklist(r));
       setVerification(null);
+      if (r.completed_at) loadHistory();
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to advance");
     }
@@ -142,6 +173,9 @@ export function RunTest({ onNavigate }: Props) {
   const stepIdx = run ? STEPS.findIndex((s) => s.id === run.current_step) : -1;
   const isTriplex = run?.test_type === "triplex";
 
+  // Find active run from history (to show who's running it even if current user doesn't have it loaded)
+  const activeInHistory = history.find((h) => !h.completed_at);
+
   return (
     <div className="run-test">
       {/* Stepper */}
@@ -157,41 +191,104 @@ export function RunTest({ onNavigate }: Props) {
         </div>
       )}
 
-      {/* No active run — test type selection */}
+      {/* No active run — show history + start form */}
       {!run && (
         <div className="run-test-start">
           <h2>Run Test</h2>
-          <p>Select the test configuration and start a new test run.</p>
-          <div className="test-type-select">
-            <label className="test-type-option">
-              <input
-                type="radio"
-                name="testType"
-                checked={testType === "simplex"}
-                onChange={() => setTestType("simplex")}
-              />
-              <div className="test-type-card">
-                <strong>Simplex</strong>
-                <span>Single pump head (Head 1 only)</span>
+
+          {/* Active run banner */}
+          {activeInHistory && (
+            <div className="active-run-banner">
+              <div className="active-run-indicator" />
+              <div>
+                <strong>Test in progress</strong> — {activeInHistory.test_type === "simplex" ? "Simplex" : "Triplex"} run
+                started by <strong>{activeInHistory.started_by}</strong> at {fmtTime(activeInHistory.started_at)}
+                <span style={{ marginLeft: "0.5rem", opacity: 0.7 }}>
+                  (Step: {stepLabel(activeInHistory.current_step)}, {duration(activeInHistory.started_at, null)} elapsed)
+                </span>
               </div>
-            </label>
-            <label className="test-type-option">
-              <input
-                type="radio"
-                name="testType"
-                checked={testType === "triplex"}
-                onChange={() => setTestType("triplex")}
-              />
-              <div className="test-type-card">
-                <strong>Triplex</strong>
-                <span>All 3 pump heads</span>
+            </div>
+          )}
+
+          {/* Test run history */}
+          {history.length > 0 && (
+            <div className="test-run-history">
+              <h3>Test Run History</h3>
+              <div style={{ overflowX: "auto" }}>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Run #</th>
+                      <th>Type</th>
+                      <th>Started</th>
+                      <th>Started By</th>
+                      <th>Status</th>
+                      <th>Duration</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {history.map((h) => (
+                      <tr key={h.id} className={!h.completed_at ? "active-row" : ""}>
+                        <td>{h.id}</td>
+                        <td>{h.test_type === "simplex" ? "Simplex" : "Triplex"}</td>
+                        <td>{fmtTime(h.started_at)}</td>
+                        <td>{h.started_by}</td>
+                        <td>
+                          {h.completed_at ? (
+                            <span className="status-badge completed">Completed</span>
+                          ) : (
+                            <span className="status-badge in-progress">In Progress — {stepLabel(h.current_step)}</span>
+                          )}
+                        </td>
+                        <td>{duration(h.started_at, h.completed_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            </label>
-          </div>
-          {testType && (
-            <button className="btn btn-primary" style={{ width: "auto", marginTop: "1rem" }} onClick={handleStart} disabled={advancing}>
-              {advancing ? "Starting..." : `Start ${testType === "simplex" ? "Simplex" : "Triplex"} Test Run`}
-            </button>
+            </div>
+          )}
+
+          {/* Start new run */}
+          {!activeInHistory ? (
+            <>
+              <p>Select the test configuration and start a new test run.</p>
+              <div className="test-type-select">
+                <label className="test-type-option">
+                  <input
+                    type="radio"
+                    name="testType"
+                    checked={testType === "simplex"}
+                    onChange={() => setTestType("simplex")}
+                  />
+                  <div className="test-type-card">
+                    <strong>Simplex</strong>
+                    <span>Single pump head (Head 1 only)</span>
+                  </div>
+                </label>
+                <label className="test-type-option">
+                  <input
+                    type="radio"
+                    name="testType"
+                    checked={testType === "triplex"}
+                    onChange={() => setTestType("triplex")}
+                  />
+                  <div className="test-type-card">
+                    <strong>Triplex</strong>
+                    <span>All 3 pump heads</span>
+                  </div>
+                </label>
+              </div>
+              {testType && (
+                <button className="btn btn-primary" style={{ width: "auto", marginTop: "1rem" }} onClick={handleStart} disabled={advancing}>
+                  {advancing ? "Starting..." : `Start ${testType === "simplex" ? "Simplex" : "Triplex"} Test Run`}
+                </button>
+              )}
+            </>
+          ) : (
+            <p style={{ marginTop: "1rem", color: "var(--gray-500)" }}>
+              A test run is currently in progress. Wait for it to complete or ask {activeInHistory.started_by} to finish it before starting a new one.
+            </p>
           )}
         </div>
       )}
@@ -338,7 +435,7 @@ export function RunTest({ onNavigate }: Props) {
             {run.test_type === "simplex" ? "Simplex" : "Triplex"} test started by {run.started_by} at {new Date(run.started_at).toLocaleString()}
             {run.completed_at && <> — Completed at {new Date(run.completed_at).toLocaleString()}</>}
           </p>
-          <button className="btn btn-primary" style={{ width: "auto", marginTop: "1rem" }} onClick={() => { setRun(null); setChecklist({}); setVerification(null); setTestType(null); }}>
+          <button className="btn btn-primary" style={{ width: "auto", marginTop: "1rem" }} onClick={() => { setRun(null); setChecklist({}); setVerification(null); setTestType(null); loadHistory(); }}>
             Start Another Test
           </button>
         </div>

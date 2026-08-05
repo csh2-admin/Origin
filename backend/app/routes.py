@@ -424,6 +424,22 @@ def get_active_test_run(conn):
     return jsonify(_serialize(_dict_row_from(cur.description, row)))
 
 
+@bp.route("/test-run/history")
+@require_db
+def get_test_run_history(conn):
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT id, test_type, current_step, started_at, started_by, completed_at
+        FROM test_runs
+        ORDER BY started_at DESC
+        LIMIT 25
+        """
+    )
+    rows = _dict_rows(cur)
+    return jsonify([_serialize(r) for r in rows])
+
+
 @bp.route("/test-run/start", methods=["POST"])
 @require_db
 def start_test_run(conn):

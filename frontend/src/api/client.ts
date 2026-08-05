@@ -113,6 +113,10 @@ export async function getActiveTestRun() {
   return request<TestRun | null>("/test-run/active");
 }
 
+export async function getTestRunHistory() {
+  return request<TestRun[]>("/test-run/history");
+}
+
 export async function startTestRun(testType: "simplex" | "triplex") {
   return request<TestRun>("/test-run/start", {
     method: "POST",
