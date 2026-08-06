@@ -105,16 +105,7 @@ export function Dashboard({ onNavigate }: Props) {
 
         {/* Part health alerts card */}
         <div className="dash-card">
-          <div className="dash-card-header">
-            Part Health
-            <button
-              className="btn btn-secondary"
-              style={{ width: "auto", fontSize: "0.7rem", padding: "0.2rem 0.5rem", marginLeft: "auto" }}
-              onClick={() => onNavigate("usage-limits")}
-            >
-              Manage Limits
-            </button>
-          </div>
+          <div className="dash-card-header">Part Health</div>
           <div className="dash-card-body">
             {alerts.length === 0 ? (
               <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>

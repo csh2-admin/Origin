@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { deletePhoto, getHistory, getPhotos, getUsage, postChange, uploadPhoto } from "../api/client";
-import type { ChangeEvent, ComponentPhoto, PositionState, UsageStats } from "../types";
+import { deletePhoto, deletePositionLimit, getHistory, getPhotos, getPositionLimits, getUsage, postChange, uploadPhoto, upsertPositionLimit } from "../api/client";
+import type { ChangeEvent, ComponentPhoto, PositionLimit, PositionState, UsageStats } from "../types";
 import { ChangeForm } from "./ChangeForm";
+
+const ADMIN_USERS = ["engineer1", "edwardyoun", "anthonyku", "jimmyli"];
 
 interface Props {
   position: PositionState;
   onRefresh: () => void;
   readOnly?: boolean;
+  user: string;
 }
 
 const TZ_ABBR = Intl.DateTimeFormat(undefined, { timeZoneName: "short" })
@@ -41,7 +44,7 @@ const PHOTO_TYPE_LABELS: Record<string, string> = {
   inspection: "Inspection",
 };
 
-export function PartDetail({ position, onRefresh, readOnly }: Props) {
+export function PartDetail({ position, onRefresh, readOnly, user }: Props) {
   const [history, setHistory] = useState<ChangeEvent[]>([]);
   const [usage, setUsage] = useState<UsageStats | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -52,11 +55,18 @@ export function PartDetail({ position, onRefresh, readOnly }: Props) {
   const [caption, setCaption] = useState("");
   const [lightbox, setLightbox] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [limit, setLimit] = useState<PositionLimit | null>(null);
+  const [editingLimit, setEditingLimit] = useState(false);
+  const [limitType, setLimitType] = useState<"cycles" | "hours">("cycles");
+  const [limitValue, setLimitValue] = useState("");
+  const [savingLimit, setSavingLimit] = useState(false);
+  const isAdmin = ADMIN_USERS.includes(user);
 
   useEffect(() => {
     loadHistory();
     loadUsage();
     loadPhotos();
+    loadLimit();
   }, [position.position]);
 
   async function loadHistory() {
@@ -81,6 +91,48 @@ export function PartDetail({ position, onRefresh, readOnly }: Props) {
       setPhotos(p);
     } catch {
       setPhotos([]);
+    }
+  }
+
+  async function loadLimit() {
+    try {
+      const all = await getPositionLimits();
+      const found = all.find((l) => l.position === position.position);
+      setLimit(found ?? null);
+      if (found) {
+        setLimitType(found.limit_type);
+        setLimitValue(String(found.limit_value));
+      } else {
+        setLimitType("cycles");
+        setLimitValue("");
+      }
+    } catch {
+      setLimit(null);
+    }
+  }
+
+  async function handleSaveLimit() {
+    if (!limitValue) return;
+    setSavingLimit(true);
+    try {
+      const saved = await upsertPositionLimit(position.position, limitType, parseFloat(limitValue));
+      setLimit(saved);
+      setEditingLimit(false);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to save limit");
+    }
+    setSavingLimit(false);
+  }
+
+  async function handleDeleteLimit() {
+    if (!confirm("Remove the usage limit for this position?")) return;
+    try {
+      await deletePositionLimit(position.position);
+      setLimit(null);
+      setLimitValue("");
+      setEditingLimit(false);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to remove limit");
     }
   }
 
@@ -203,6 +255,85 @@ export function PartDetail({ position, onRefresh, readOnly }: Props) {
           )}
         </div>
       )}
+
+      {/* Usage Limit */}
+      <div className="usage-limit-section">
+        {limit && !editingLimit && (
+          <div className="usage-limit-display">
+            <div className="label">Usage Limit</div>
+            <div style={{ fontSize: "0.85rem" }}>
+              <strong>{fmtNum(limit.limit_value, limit.limit_type === "hours" ? 1 : 0)}</strong>
+              {" "}{limit.limit_type}
+              {usage && (
+                (() => {
+                  const current = limit.limit_type === "cycles" ? usage.est_cycles : usage.runtime_hours;
+                  const pct = current && limit.limit_value > 0 ? (current / limit.limit_value) * 100 : null;
+                  return pct != null ? (
+                    <span style={{ marginLeft: "0.5rem" }}>
+                      <span className="health-bar-track" style={{ display: "inline-block", width: 60, verticalAlign: "middle" }}>
+                        <span
+                          className="health-bar-fill"
+                          style={{
+                            display: "block",
+                            width: `${Math.min(pct, 100)}%`,
+                            background: pct >= 90 ? "var(--red-600)" : pct >= 70 ? "#d97706" : "var(--green-600)",
+                          }}
+                        />
+                      </span>
+                      <span style={{
+                        fontSize: "0.8rem", fontWeight: 600, marginLeft: "0.35rem",
+                        color: pct >= 90 ? "var(--red-600)" : pct >= 70 ? "#d97706" : "var(--green-600)",
+                      }}>
+                        {pct.toFixed(0)}%
+                      </span>
+                    </span>
+                  ) : null;
+                })()
+              )}
+            </div>
+            {isAdmin && (
+              <button className="btn-revert" style={{ marginTop: "0.25rem" }} onClick={() => setEditingLimit(true)}>Edit</button>
+            )}
+          </div>
+        )}
+        {!limit && !editingLimit && isAdmin && (
+          <button
+            className="btn btn-secondary"
+            style={{ width: "auto", fontSize: "0.8rem", marginTop: "0.25rem" }}
+            onClick={() => setEditingLimit(true)}
+          >
+            Set Usage Limit
+          </button>
+        )}
+        {editingLimit && isAdmin && (
+          <div className="usage-limit-form">
+            <div className="label">Usage Limit</div>
+            <div style={{ display: "flex", gap: "0.5rem", alignItems: "flex-end", flexWrap: "wrap" }}>
+              <select value={limitType} onChange={(e) => setLimitType(e.target.value as "cycles" | "hours")} style={{ width: "auto" }}>
+                <option value="cycles">Cycles</option>
+                <option value="hours">Hours</option>
+              </select>
+              <input
+                type="number"
+                value={limitValue}
+                onChange={(e) => setLimitValue(e.target.value)}
+                placeholder="e.g. 50000"
+                min="1"
+                style={{ width: 100 }}
+              />
+              <button className="btn btn-primary" style={{ width: "auto", fontSize: "0.8rem" }} onClick={handleSaveLimit} disabled={savingLimit || !limitValue}>
+                {savingLimit ? "..." : "Save"}
+              </button>
+              <button className="btn btn-secondary" style={{ width: "auto", fontSize: "0.8rem" }} onClick={() => setEditingLimit(false)}>
+                Cancel
+              </button>
+              {limit && (
+                <button className="btn-revert" onClick={handleDeleteLimit}>Remove</button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
 
       {!readOnly && (
         <div className="actions-bar">

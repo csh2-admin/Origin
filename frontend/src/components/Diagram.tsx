@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import type { PositionState } from "../types";
 
 type UsageMap = Record<string, { est_cycles: number; runtime_hours: number }>;
@@ -10,6 +11,26 @@ interface Props {
   usage: UsageMap;
   readOnly?: boolean;
 }
+
+const COMP_BOUNDS: Record<string, { x: number; y: number; w: number; h: number }> = {
+  inline_dcv:     { x: 455, y: 50,  w: 120, h: 80 },
+  pump_housing:   { x: 50,  y: 170, w: 960, h: 540 },
+  lp_seal_group:  { x: 95,  y: 310, w: 180, h: 80 },
+  dcv_spring:     { x: 380, y: 215, w: 170, h: 80 },
+  dcv_poppet:     { x: 380, y: 310, w: 170, h: 80 },
+  piston:         { x: 95,  y: 425, w: 390, h: 120 },
+  icv_flapper:    { x: 500, y: 425, w: 120, h: 55 },
+  icv_spring:     { x: 500, y: 490, w: 120, h: 55 },
+  head_block:     { x: 620, y: 425, w: 115, h: 120 },
+  press_plate:    { x: 745, y: 425, w: 115, h: 120 },
+  retaining_ring: { x: 870, y: 425, w: 115, h: 120 },
+  hp_seal_group:  { x: 380, y: 580, w: 170, h: 90 },
+  motor:          { x: 50,  y: 170, w: 960, h: 540 },
+  crank_drive:    { x: 50,  y: 170, w: 960, h: 540 },
+};
+
+const FULL_VIEW = "0 0 1300 750";
+const ZOOM_PAD = 80;
 
 function partLabel(s: PositionState | undefined): string {
   if (!s || !s.part_number) return "—";
@@ -70,6 +91,18 @@ export function Diagram({ state, selected, onSelect, onRemoveInlineDcv, usage, r
   const dcvState = getPos(state, "inline_dcv");
   const dcvInstalled = !!(dcvState && dcvState.part_number);
 
+  const viewBox = useMemo(() => {
+    if (!selected || !COMP_BOUNDS[selected]) return FULL_VIEW;
+    const b = COMP_BOUNDS[selected];
+    const cx = b.x + b.w / 2;
+    const cy = b.y + b.h / 2;
+    const size = Math.max(b.w, b.h) + ZOOM_PAD * 2;
+    const aspect = 1300 / 750;
+    const vw = Math.max(size * aspect, b.w + ZOOM_PAD * 2);
+    const vh = vw / aspect;
+    return `${cx - vw / 2} ${cy - vh / 2} ${vw} ${vh}`;
+  }, [selected]);
+
   function handleToggle(e: React.MouseEvent) {
     if (readOnly) return;
     e.stopPropagation();
@@ -83,7 +116,7 @@ export function Diagram({ state, selected, onSelect, onRemoveInlineDcv, usage, r
   return (
     <svg
       className="diagram-svg"
-      viewBox="0 0 1300 750"
+      viewBox={viewBox}
       xmlns="http://www.w3.org/2000/svg"
     >
       {/* ---- Flow lines ---- */}

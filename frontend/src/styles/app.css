@@ -643,6 +643,19 @@ textarea {
   color: var(--text-secondary);
 }
 
+.usage-limit-section {
+  margin-bottom: 0.75rem;
+}
+
+.usage-limit-display .label,
+.usage-limit-form .label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+}
+
 .actions-bar {
   display: flex;
   gap: 0.5rem;
