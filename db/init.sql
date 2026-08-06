@@ -180,3 +180,18 @@ GRANT SELECT, INSERT, UPDATE ON TABLE assembly_runs TO engineer1;
 GRANT USAGE, SELECT ON SEQUENCE assembly_runs_id_seq TO engineer1;
 GRANT SELECT, INSERT, UPDATE ON TABLE assembly_step_logs TO engineer1;
 GRANT USAGE, SELECT ON SEQUENCE assembly_step_logs_id_seq TO engineer1;
+
+-- 8. Position usage limits — cycle or hour limits per position
+CREATE TABLE IF NOT EXISTS position_limits (
+    position    TEXT PRIMARY KEY REFERENCES positions(name),
+    limit_type  TEXT NOT NULL CHECK (limit_type IN ('cycles', 'hours')),
+    limit_value NUMERIC NOT NULL,
+    updated_by  TEXT NOT NULL DEFAULT session_user,
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE position_limits TO engineer1;
+
+-- 9. Add usage-at-removal columns to change_events
+ALTER TABLE change_events ADD COLUMN IF NOT EXISTS removed_cycles NUMERIC;
+ALTER TABLE change_events ADD COLUMN IF NOT EXISTS removed_hours NUMERIC;

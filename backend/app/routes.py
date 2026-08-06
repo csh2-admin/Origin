@@ -295,12 +295,12 @@ def post_change(conn):
             effective_time, position,
             removed_part_number, removed_part_revision, removed_part_serial,
             installed_part_number, installed_part_revision, installed_part_serial,
-            note
-        ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            note, removed_cycles, removed_hours
+        ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
         RETURNING id, effective_time, recorded_time, position,
                   removed_part_number, removed_part_revision, removed_part_serial,
                   installed_part_number, installed_part_revision, installed_part_serial,
-                  changed_by, note
+                  changed_by, note, removed_cycles, removed_hours
         """,
         (
             datetime.fromisoformat(body["effective_time"]),
@@ -312,6 +312,8 @@ def post_change(conn):
             body.get("installed_part_revision"),
             body.get("installed_part_serial"),
             body.get("note"),
+            body.get("removed_cycles"),
+            body.get("removed_hours"),
         ),
     )
     row = _dict_row(cur)
@@ -399,6 +401,107 @@ def delete_photo(photo_id, conn):
     cur.execute("DELETE FROM component_photos WHERE id = %s", (photo_id,))
     conn.commit()
     return jsonify({"status": "ok"})
+
+
+# ---- Position Limits ----
+
+@bp.route("/position-limits")
+@require_db
+def get_position_limits(conn):
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT pl.position, p.display_name, pl.limit_type, pl.limit_value,
+               pl.updated_by, pl.updated_at
+        FROM position_limits pl
+        JOIN positions p ON p.name = pl.position
+        ORDER BY p.display_name
+        """
+    )
+    return jsonify([_serialize(r) for r in _dict_rows(cur)])
+
+
+@bp.route("/position-limits", methods=["POST"])
+@require_db
+def upsert_position_limit(conn):
+    body = request.get_json()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO position_limits (position, limit_type, limit_value)
+        VALUES (%s, %s, %s)
+        ON CONFLICT (position) DO UPDATE
+        SET limit_type = EXCLUDED.limit_type,
+            limit_value = EXCLUDED.limit_value,
+            updated_by = session_user,
+            updated_at = now()
+        RETURNING position, limit_type, limit_value, updated_by, updated_at
+        """,
+        (body["position"], body["limit_type"], body["limit_value"]),
+    )
+    row = _dict_row(cur)
+    conn.commit()
+    return jsonify(_serialize(row))
+
+
+@bp.route("/position-limits/<position>", methods=["DELETE"])
+@require_db
+def delete_position_limit(position, conn):
+    cur = conn.cursor()
+    cur.execute("DELETE FROM position_limits WHERE position = %s RETURNING position", (position,))
+    row = cur.fetchone()
+    if not row:
+        return jsonify({"detail": "Not found"}), 404
+    conn.commit()
+    return jsonify({"deleted": True})
+
+
+@bp.route("/dashboard")
+@require_db
+def get_dashboard(conn):
+    cur = conn.cursor()
+
+    # Active test run
+    cur.execute(
+        """
+        SELECT id, test_type, current_step, started_at, started_by
+        FROM test_runs WHERE completed_at IS NULL
+        ORDER BY started_at DESC LIMIT 1
+        """
+    )
+    active_run = None
+    row = cur.fetchone()
+    if row:
+        active_run = _serialize(dict(zip([d[0] for d in cur.description], row)))
+
+    # Recent change events
+    cur.execute(
+        """
+        SELECT ce.id, ce.position, p.display_name, ce.effective_time,
+               ce.installed_part_number, ce.removed_part_number, ce.changed_by
+        FROM change_events ce
+        JOIN positions p ON p.name = ce.position
+        ORDER BY ce.effective_time DESC, ce.recorded_time DESC
+        LIMIT 10
+        """
+    )
+    recent_changes = [_serialize(r) for r in _dict_rows(cur)]
+
+    # Position limits with current usage for health check
+    cur.execute(
+        """
+        SELECT pl.position, p.display_name, pl.limit_type, pl.limit_value
+        FROM position_limits pl
+        JOIN positions p ON p.name = pl.position
+        """
+    )
+    limits = [_serialize(r) for r in _dict_rows(cur)]
+
+    return jsonify({
+        "active_run": active_run,
+        "recent_changes": recent_changes,
+        "limits": limits,
+    })
 
 
 # ---- Test Runs ----

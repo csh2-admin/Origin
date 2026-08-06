@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { getAllUsage, getMe, getState, logout, postChange } from "./api/client";
 import { Assembly, ProcedurePage } from "./components/Assembly";
+import { Dashboard } from "./components/Dashboard";
 import { DevTodo } from "./components/DevTodo";
 import { Diagram } from "./components/Diagram";
 import { FeedbackModal } from "./components/FeedbackModal";
@@ -9,13 +10,14 @@ import { Login } from "./components/Login";
 import { PartDetail } from "./components/PartDetail";
 import { RunTest } from "./components/RunTest";
 import { Triplex } from "./components/Triplex";
+import { UsageLimits } from "./components/UsageLimits";
 import { WeeboActions } from "./components/WeeboActions";
 import { WeeboAsk } from "./components/WeeboAsk";
 import { WeeboNewEntry } from "./components/WeeboNewEntry";
 import { WeeboRecords } from "./components/WeeboRecords";
 import type { PositionState } from "./types";
 
-type Page = "how-to" | "asset-model" | "assembly" | "startup" | "shutdown" | "weebo" | "run-test" | "dev-todo";
+type Page = "dashboard" | "how-to" | "asset-model" | "assembly" | "startup" | "shutdown" | "weebo" | "run-test" | "usage-limits" | "dev-todo";
 
 interface NavItem {
   id: Page;
@@ -25,9 +27,11 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
+  { id: "dashboard", label: "Dashboard" },
   { id: "how-to", label: "How To Use" },
   { id: "asset-model", label: "Asset Model" },
   { id: "run-test", label: "Run Test" },
+  { id: "usage-limits", label: "Usage Limits" },
   { id: "weebo", label: "Weebo" },
   {
     id: "assembly", label: "Documentation",
@@ -58,7 +62,7 @@ function PlaceholderPage({ title }: { title: string }) {
 export function App() {
   const [user, setUser] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
-  const [page, setPage] = useState<Page>("how-to");
+  const [page, setPage] = useState<Page>("dashboard");
   const [navOpen, setNavOpen] = useState(true);
   const [state, setState] = useState<PositionState[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
@@ -216,8 +220,12 @@ export function App() {
           )}
         </nav>
         <div className="page-content">
-          {page === "how-to" ? (
+          {page === "dashboard" ? (
+            <Dashboard onNavigate={(p) => setPage(p as Page)} />
+          ) : page === "how-to" ? (
             <HowToPage onNavigate={(p) => setPage(p as Page)} />
+          ) : page === "usage-limits" ? (
+            <UsageLimits />
           ) : page === "asset-model" ? (
             <div className="main-layout">
               <div className="diagram-pane">

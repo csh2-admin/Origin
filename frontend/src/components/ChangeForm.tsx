@@ -26,6 +26,8 @@ export function ChangeForm({ position, onSaved, onCancel }: Props) {
   const [installedRevision, setInstalledRevision] = useState("");
   const [installedSerial, setInstalledSerial] = useState("");
   const [note, setNote] = useState("");
+  const [removedCycles, setRemovedCycles] = useState("");
+  const [removedHours, setRemovedHours] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -61,6 +63,8 @@ export function ChangeForm({ position, onSaved, onCancel }: Props) {
         installed_part_revision: installedRevision || undefined,
         installed_part_serial: installedSerial || undefined,
         note: note || undefined,
+        removed_cycles: removedCycles ? parseFloat(removedCycles) : undefined,
+        removed_hours: removedHours ? parseFloat(removedHours) : undefined,
       });
       onSaved();
     } catch (err) {
@@ -83,6 +87,32 @@ export function ChangeForm({ position, onSaved, onCancel }: Props) {
             {position.part_revision ? ` Rev ${position.part_revision}` : ""}
             {position.part_serial ? ` (S/N ${position.part_serial})` : ""}
           </strong>
+        </div>
+      )}
+
+      {position.part_number && (
+        <div className="form-row">
+          <div className="field">
+            <label>Cycles at Removal</label>
+            <input
+              type="number"
+              value={removedCycles}
+              onChange={(e) => setRemovedCycles(e.target.value)}
+              placeholder="e.g. 12500"
+              min="0"
+            />
+          </div>
+          <div className="field">
+            <label>Hours at Removal</label>
+            <input
+              type="number"
+              value={removedHours}
+              onChange={(e) => setRemovedHours(e.target.value)}
+              placeholder="e.g. 48.5"
+              min="0"
+              step="0.1"
+            />
+          </div>
         </div>
       )}
 

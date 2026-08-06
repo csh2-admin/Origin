@@ -150,4 +150,35 @@ export interface ChangePayload {
   installed_part_revision?: string;
   installed_part_serial?: string;
   note?: string;
+  removed_cycles?: number;
+  removed_hours?: number;
+}
+
+export interface PositionLimit {
+  position: string;
+  display_name: string;
+  limit_type: "cycles" | "hours";
+  limit_value: number;
+  updated_by?: string;
+  updated_at?: string;
+}
+
+export interface DashboardData {
+  active_run: {
+    id: number;
+    test_type: string;
+    current_step: string;
+    started_at: string;
+    started_by: string;
+  } | null;
+  recent_changes: {
+    id: number;
+    position: string;
+    display_name: string;
+    effective_time: string;
+    installed_part_number: string | null;
+    removed_part_number: string | null;
+    changed_by: string;
+  }[];
+  limits: PositionLimit[];
 }

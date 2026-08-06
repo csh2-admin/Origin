@@ -1,4 +1,4 @@
-import type { ActionItem, AskResponse, AssemblyInstruction, AssemblyRun, AssemblyStepLog, AssemblyVerification, ChangeEvent, ChangePayload, ComponentPhoto, MemoEntry, PartCatalogEntry, PositionState, TestRun, UsageStats } from "../types";
+import type { ActionItem, AskResponse, AssemblyInstruction, AssemblyRun, AssemblyStepLog, AssemblyVerification, ChangeEvent, ChangePayload, ComponentPhoto, DashboardData, MemoEntry, PartCatalogEntry, PositionLimit, PositionState, TestRun, UsageStats } from "../types";
 
 const BASE = "/api";
 
@@ -345,6 +345,29 @@ export async function getFeedback(category?: string) {
 
 export async function resolveFeedback(feedbackId: number) {
   return request<{ status: string }>(`/feedback/${feedbackId}/resolve`, { method: "POST" });
+}
+
+// ── Dashboard & Limits ──
+
+export async function getDashboard() {
+  return request<DashboardData>("/dashboard");
+}
+
+export async function getPositionLimits() {
+  return request<PositionLimit[]>("/position-limits");
+}
+
+export async function upsertPositionLimit(position: string, limitType: string, limitValue: number) {
+  return request<PositionLimit>("/position-limits", {
+    method: "POST",
+    body: JSON.stringify({ position, limit_type: limitType, limit_value: limitValue }),
+  });
+}
+
+export async function deletePositionLimit(position: string) {
+  return request<{ deleted: boolean }>(`/position-limits/${encodeURIComponent(position)}`, {
+    method: "DELETE",
+  });
 }
 
 export async function submitFeedback(category: string, message: string) {
