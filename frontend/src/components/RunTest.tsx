@@ -4,13 +4,14 @@ import {
   cancelTestRun,
   getActiveTestRun,
   getAssemblyRuns,
+  getInstructions,
   getTestRunHistory,
   startTestRun,
   updateChecklist,
   updateNotes,
   verifyAssembly,
 } from "../api/client";
-import type { AssemblyRun, AssemblyVerification, TestRun } from "../types";
+import type { AssemblyInstruction, AssemblyRun, AssemblyVerification, TestRun } from "../types";
 
 interface Props {
   onNavigate: (page: string) => void;
@@ -31,23 +32,6 @@ const ASSEMBLY_PHASES = [
   { id: "pump_installation", label: "Pump Installation" },
 ];
 
-const STARTUP_ITEMS = [
-  "Power on main system",
-  "Confirm data logging is active",
-  "Complete environmental safety checks",
-  "Compressed air on",
-  "Verify coolant levels",
-  "Check for leaks at all fittings",
-];
-
-const SHUTDOWN_ITEMS = [
-  "Reduce motor speed to zero",
-  "Compressed air off",
-  "De-pressurize system",
-  "Power off main system",
-  "Record final meter readings",
-  "Secure test area",
-];
 
 function parseChecklist(run: TestRun): Record<string, boolean> {
   try {
@@ -92,6 +76,8 @@ export function RunTest({ onNavigate }: Props) {
   const [notes, setNotes] = useState("");
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [recentAssemblies, setRecentAssemblies] = useState<Record<string, AssemblyRun | null>>({});
+  const [startupItems, setStartupItems] = useState<string[]>([]);
+  const [shutdownItems, setShutdownItems] = useState<string[]>([]);
 
   const loadRun = useCallback(async () => {
     try {
@@ -127,6 +113,15 @@ export function RunTest({ onNavigate }: Props) {
   }, []);
 
   useEffect(() => { loadRun(); loadHistory(); }, [loadRun, loadHistory]);
+
+  useEffect(() => {
+    getInstructions("startup_procedure").then((ins) =>
+      setStartupItems(ins.map((i: AssemblyInstruction) => i.action))
+    ).catch(() => {});
+    getInstructions("shutdown_procedure").then((ins) =>
+      setShutdownItems(ins.map((i: AssemblyInstruction) => i.action))
+    ).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (run?.current_step === "build") loadRecentAssemblies();
@@ -417,11 +412,11 @@ export function RunTest({ onNavigate }: Props) {
           <h2>Step 3: Startup Procedure</h2>
           <p>Complete all items before proceeding to the test.</p>
           <div className="checklist">
-            {STARTUP_ITEMS.map((item, i) => {
+            {startupItems.map((item, i) => {
               const key = `startup_${i}`;
               return (
                 <label key={key} className="checklist-item">
-                  <input type="checkbox" checked={!!checklist[key]} onChange={() => toggleItem(key, STARTUP_ITEMS)} />
+                  <input type="checkbox" checked={!!checklist[key]} onChange={() => toggleItem(key, startupItems)} />
                   <span>{item}</span>
                 </label>
               );
@@ -438,7 +433,7 @@ export function RunTest({ onNavigate }: Props) {
             />
           </div>
 
-          {allChecked("startup", STARTUP_ITEMS) && (
+          {allChecked("startup", startupItems) && (
             <button className="btn btn-primary" style={{ width: "auto", marginTop: "1rem" }} onClick={handleAdvance} disabled={advancing}>
               {advancing ? "..." : "Startup Complete — Continue"}
             </button>
@@ -466,17 +461,17 @@ export function RunTest({ onNavigate }: Props) {
           <h2>Step 5: Shutdown Procedure</h2>
           <p>Complete all shutdown steps before finalizing.</p>
           <div className="checklist">
-            {SHUTDOWN_ITEMS.map((item, i) => {
+            {shutdownItems.map((item, i) => {
               const key = `shutdown_${i}`;
               return (
                 <label key={key} className="checklist-item">
-                  <input type="checkbox" checked={!!checklist[key]} onChange={() => toggleItem(key, SHUTDOWN_ITEMS)} />
+                  <input type="checkbox" checked={!!checklist[key]} onChange={() => toggleItem(key, shutdownItems)} />
                   <span>{item}</span>
                 </label>
               );
             })}
           </div>
-          {allChecked("shutdown", SHUTDOWN_ITEMS) && (
+          {allChecked("shutdown", shutdownItems) && (
             <button className="btn btn-primary" style={{ width: "auto", marginTop: "1rem" }} onClick={handleAdvance} disabled={advancing}>
               {advancing ? "..." : "Shutdown Complete — Finalize"}
             </button>
