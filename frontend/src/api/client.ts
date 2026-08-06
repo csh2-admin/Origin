@@ -131,6 +131,12 @@ export async function advanceTestRun(runId: number, checklistState?: Record<stri
   });
 }
 
+export async function cancelTestRun(runId: number) {
+  return request<{ cancelled: boolean; id: number }>(`/test-run/${runId}/cancel`, {
+    method: "POST",
+  });
+}
+
 export async function updateChecklist(runId: number, checklistState: Record<string, boolean>) {
   return request<TestRun>(`/test-run/${runId}/checklist`, {
     method: "PUT",

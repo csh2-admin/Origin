@@ -403,7 +403,7 @@ def delete_photo(photo_id, conn):
 
 # ---- Test Runs ----
 
-TEST_STEPS = ["assembly", "startup", "test", "shutdown", "complete"]
+TEST_STEPS = ["build", "assembly", "startup", "test", "shutdown", "complete"]
 
 @bp.route("/test-run/active")
 @require_db
@@ -454,7 +454,7 @@ def start_test_run(conn):
     cur.execute(
         """
         INSERT INTO test_runs (test_type, current_step, checklist_state, started_by)
-        VALUES (%s, 'assembly', '{}', CURRENT_USER)
+        VALUES (%s, 'build', '{}', CURRENT_USER)
         RETURNING id, test_type, current_step, checklist_state, notes, started_at, started_by, completed_at
         """,
         (test_type,),
@@ -499,6 +499,24 @@ def advance_test_run(run_id, conn):
     result = _dict_row(cur)
     conn.commit()
     return jsonify(_serialize(result))
+
+
+@bp.route("/test-run/<int:run_id>/cancel", methods=["POST"])
+@require_db
+def cancel_test_run(run_id, conn):
+    cur = conn.cursor()
+    cur.execute(
+        """
+        DELETE FROM test_runs WHERE id = %s AND completed_at IS NULL
+        RETURNING id
+        """,
+        (run_id,),
+    )
+    row = cur.fetchone()
+    if not row:
+        return jsonify({"detail": "Test run not found or already completed"}), 404
+    conn.commit()
+    return jsonify({"cancelled": True, "id": run_id})
 
 
 @bp.route("/test-run/<int:run_id>/checklist", methods=["PUT"])
@@ -558,12 +576,14 @@ def verify_assembly(conn):
         """
     )
     rows = _dict_rows(cur)
-    missing = [r for r in rows if not r.get("part_number")]
+    EXEMPT_POSITIONS = {"inline_dcv"}
+    countable = [r for r in rows if r.get("name") not in EXEMPT_POSITIONS]
+    missing = [r for r in countable if not r.get("part_number")]
     return jsonify({
         "complete": len(missing) == 0,
         "missing": [_serialize(r) for r in missing],
-        "total": len(rows),
-        "installed": len(rows) - len(missing),
+        "total": len(countable),
+        "installed": len(countable) - len(missing),
     })
 
 

@@ -1,25 +1,34 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   advanceTestRun,
+  cancelTestRun,
   getActiveTestRun,
+  getAssemblyRuns,
   getTestRunHistory,
   startTestRun,
   updateChecklist,
   updateNotes,
   verifyAssembly,
 } from "../api/client";
-import type { AssemblyVerification, TestRun } from "../types";
+import type { AssemblyRun, AssemblyVerification, TestRun } from "../types";
 
 interface Props {
   onNavigate: (page: string) => void;
 }
 
 const STEPS = [
-  { id: "assembly", label: "Assembly" },
+  { id: "build", label: "Build" },
+  { id: "assembly", label: "Verify" },
   { id: "startup", label: "Startup" },
   { id: "test", label: "Test" },
   { id: "shutdown", label: "Shutdown" },
   { id: "complete", label: "Complete" },
+];
+
+const ASSEMBLY_PHASES = [
+  { id: "seal_installation", label: "Seal Installation" },
+  { id: "pump_assembly", label: "Pump Assembly" },
+  { id: "pump_installation", label: "Pump Installation" },
 ];
 
 const STARTUP_ITEMS = [
@@ -82,6 +91,7 @@ export function RunTest({ onNavigate }: Props) {
   const [testType, setTestType] = useState<"simplex" | "triplex" | null>(null);
   const [notes, setNotes] = useState("");
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [recentAssemblies, setRecentAssemblies] = useState<Record<string, AssemblyRun | null>>({});
 
   const loadRun = useCallback(async () => {
     try {
@@ -102,7 +112,25 @@ export function RunTest({ onNavigate }: Props) {
     } catch { /* ignore */ }
   }, []);
 
+  const loadRecentAssemblies = useCallback(async () => {
+    const results: Record<string, AssemblyRun | null> = {};
+    for (const phase of ASSEMBLY_PHASES) {
+      try {
+        const runs = await getAssemblyRuns(phase.id);
+        const latest = runs.length > 0 ? runs[0] : null;
+        results[phase.id] = latest;
+      } catch {
+        results[phase.id] = null;
+      }
+    }
+    setRecentAssemblies(results);
+  }, []);
+
   useEffect(() => { loadRun(); loadHistory(); }, [loadRun, loadHistory]);
+
+  useEffect(() => {
+    if (run?.current_step === "build") loadRecentAssemblies();
+  }, [run?.current_step, loadRecentAssemblies]);
 
   async function handleStart() {
     if (!testType) return;
@@ -117,6 +145,22 @@ export function RunTest({ onNavigate }: Props) {
       alert(err instanceof Error ? err.message : "Failed to start");
     }
     setAdvancing(false);
+  }
+
+  async function handleCancel() {
+    if (!run) return;
+    if (!confirm("Cancel this test run? This cannot be undone.")) return;
+    try {
+      await cancelTestRun(run.id);
+      setRun(null);
+      setChecklist({});
+      setVerification(null);
+      setNotes("");
+      setTestType(null);
+      loadHistory();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to cancel");
+    }
   }
 
   async function handleVerify() {
@@ -172,8 +216,6 @@ export function RunTest({ onNavigate }: Props) {
 
   const stepIdx = run ? STEPS.findIndex((s) => s.id === run.current_step) : -1;
   const isTriplex = run?.test_type === "triplex";
-
-  // Find active run from history (to show who's running it even if current user doesn't have it loaded)
   const activeInHistory = history.find((h) => !h.completed_at);
 
   return (
@@ -191,12 +233,20 @@ export function RunTest({ onNavigate }: Props) {
         </div>
       )}
 
+      {/* Cancel button — visible on all active steps except complete */}
+      {run && run.current_step !== "complete" && (
+        <div style={{ textAlign: "right", maxWidth: 720, margin: "0 auto" }}>
+          <button className="btn btn-danger" style={{ width: "auto", fontSize: "0.8rem" }} onClick={handleCancel}>
+            Cancel Test Run
+          </button>
+        </div>
+      )}
+
       {/* No active run — show start form */}
       {!run && (
         <div className="run-test-start">
           <h2>Run Test</h2>
 
-          {/* Active run banner */}
           {activeInHistory && (
             <div className="active-run-banner">
               <div className="active-run-indicator" />
@@ -210,30 +260,19 @@ export function RunTest({ onNavigate }: Props) {
             </div>
           )}
 
-          {/* Start new run */}
           {!activeInHistory ? (
             <>
               <p>Select the test configuration and start a new test run.</p>
               <div className="test-type-select">
                 <label className="test-type-option">
-                  <input
-                    type="radio"
-                    name="testType"
-                    checked={testType === "simplex"}
-                    onChange={() => setTestType("simplex")}
-                  />
+                  <input type="radio" name="testType" checked={testType === "simplex"} onChange={() => setTestType("simplex")} />
                   <div className="test-type-card">
                     <strong>Simplex</strong>
                     <span>Single pump head (Head 1 only)</span>
                   </div>
                 </label>
                 <label className="test-type-option">
-                  <input
-                    type="radio"
-                    name="testType"
-                    checked={testType === "triplex"}
-                    onChange={() => setTestType("triplex")}
-                  />
+                  <input type="radio" name="testType" checked={testType === "triplex"} onChange={() => setTestType("triplex")} />
                   <div className="test-type-card">
                     <strong>Triplex</strong>
                     <span>All 3 pump heads</span>
@@ -293,14 +332,80 @@ export function RunTest({ onNavigate }: Props) {
         </div>
       )}
 
-      {/* Step: Assembly */}
-      {run?.current_step === "assembly" && (
+      {/* Step: Build */}
+      {run?.current_step === "build" && (
         <div className="run-test-card">
-          <h2>Step 1: System Assembly</h2>
+          <h2>Step 1: Pump Assembly</h2>
           <p>
             {isTriplex
-              ? "Verify that all 3 pump heads have been assembled and the asset model is up to date."
-              : "Verify that Pump Head 1 has been assembled and the asset model is up to date."}
+              ? "Complete the assembly procedures for all 3 pump heads, or skip if reusing the previous assembly."
+              : "Complete the assembly procedures for Pump Head 1, or skip if reusing the previous assembly."}
+          </p>
+
+          <div className="build-phases">
+            {ASSEMBLY_PHASES.map((phase) => {
+              const recent = recentAssemblies[phase.id];
+              const completed = recent?.completed_at;
+              return (
+                <div key={phase.id} className={`build-phase-row${completed ? " done" : ""}`}>
+                  <div className="build-phase-status">
+                    {completed ? "✓" : "○"}
+                  </div>
+                  <div className="build-phase-info">
+                    <strong>{phase.label}</strong>
+                    {completed ? (
+                      <span className="build-phase-meta">
+                        Completed by {recent.completed_by} — {fmtTime(recent.completed_at!)}
+                      </span>
+                    ) : recent ? (
+                      <span className="build-phase-meta build-phase-pending">
+                        In progress — started by {recent.started_by} at {fmtTime(recent.started_at)}
+                      </span>
+                    ) : (
+                      <span className="build-phase-meta">Not started</span>
+                    )}
+                  </div>
+                  <button
+                    className="btn btn-secondary"
+                    style={{ width: "auto", fontSize: "0.8rem" }}
+                    onClick={() => onNavigate("assembly")}
+                  >
+                    {completed ? "View" : recent ? "Resume" : "Start"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="build-actions">
+            <button
+              className="btn btn-primary"
+              style={{ width: "auto" }}
+              onClick={handleAdvance}
+              disabled={advancing}
+            >
+              {advancing ? "..." : "Assembly Complete — Continue to Verification"}
+            </button>
+            <button
+              className="btn btn-secondary"
+              style={{ width: "auto" }}
+              onClick={handleAdvance}
+              disabled={advancing}
+            >
+              Skip — Reusing Previous Assembly
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Step: Verify (was "Assembly") */}
+      {run?.current_step === "assembly" && (
+        <div className="run-test-card">
+          <h2>Step 2: Verify Asset Model</h2>
+          <p>
+            {isTriplex
+              ? "Verify that all 3 pump heads have parts installed and the asset model is up to date."
+              : "Verify that Pump Head 1 has parts installed and the asset model is up to date."}
           </p>
 
           {!verification && (
@@ -348,18 +453,14 @@ export function RunTest({ onNavigate }: Props) {
       {/* Step: Startup */}
       {run?.current_step === "startup" && (
         <div className="run-test-card">
-          <h2>Step 2: Startup Procedure</h2>
+          <h2>Step 3: Startup Procedure</h2>
           <p>Complete all items before proceeding to the test.</p>
           <div className="checklist">
             {STARTUP_ITEMS.map((item, i) => {
               const key = `startup_${i}`;
               return (
                 <label key={key} className="checklist-item">
-                  <input
-                    type="checkbox"
-                    checked={!!checklist[key]}
-                    onChange={() => toggleItem(key, STARTUP_ITEMS)}
-                  />
+                  <input type="checkbox" checked={!!checklist[key]} onChange={() => toggleItem(key, STARTUP_ITEMS)} />
                   <span>{item}</span>
                 </label>
               );
@@ -387,7 +488,7 @@ export function RunTest({ onNavigate }: Props) {
       {/* Step: Test */}
       {run?.current_step === "test" && (
         <div className="run-test-card">
-          <h2>Step 3: Run Test</h2>
+          <h2>Step 4: Run Test</h2>
           <p>Run the test and log results using the <button className="link-btn" onClick={() => onNavigate("weebo")}>Weebo</button> tab.</p>
           <div className="test-prompt">
             <p>Ready to proceed? Confirm the test is complete.</p>
@@ -401,18 +502,14 @@ export function RunTest({ onNavigate }: Props) {
       {/* Step: Shutdown */}
       {run?.current_step === "shutdown" && (
         <div className="run-test-card">
-          <h2>Step 4: Shutdown Procedure</h2>
+          <h2>Step 5: Shutdown Procedure</h2>
           <p>Complete all shutdown steps before finalizing.</p>
           <div className="checklist">
             {SHUTDOWN_ITEMS.map((item, i) => {
               const key = `shutdown_${i}`;
               return (
                 <label key={key} className="checklist-item">
-                  <input
-                    type="checkbox"
-                    checked={!!checklist[key]}
-                    onChange={() => toggleItem(key, SHUTDOWN_ITEMS)}
-                  />
+                  <input type="checkbox" checked={!!checklist[key]} onChange={() => toggleItem(key, SHUTDOWN_ITEMS)} />
                   <span>{item}</span>
                 </label>
               );
