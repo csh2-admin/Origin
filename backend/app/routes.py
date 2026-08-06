@@ -135,9 +135,16 @@ def get_history(position, conn):
     return jsonify([_serialize(r) for r in _dict_rows(cur)])
 
 
+_usage_cache: dict | None = None
+_usage_cache_ts: float = 0
+
 @bp.route("/usage")
 @require_db
 def get_all_usage(conn):
+    global _usage_cache, _usage_cache_ts
+    if _usage_cache is not None and time.time() - _usage_cache_ts < 120:
+        return jsonify(_usage_cache)
+
     cur = conn.cursor()
     cur.execute(
         """
@@ -150,6 +157,8 @@ def get_all_usage(conn):
     installs = {r["position"]: r["effective_time"] for r in _dict_rows(cur)}
 
     if not installs:
+        _usage_cache = {}
+        _usage_cache_ts = time.time()
         return jsonify({})
 
     now = datetime.now(timezone.utc)
@@ -200,6 +209,8 @@ def get_all_usage(conn):
             traceback.print_exc()
             results[position] = {"est_cycles": 0, "runtime_hours": 0, "_error": str(exc)}
 
+    _usage_cache = results
+    _usage_cache_ts = time.time()
     return jsonify(results)
 
 
