@@ -17,14 +17,26 @@ import type { PositionState } from "./types";
 
 type Page = "how-to" | "asset-model" | "assembly" | "startup" | "shutdown" | "weebo" | "run-test" | "dev-todo";
 
-const NAV_ITEMS: { id: Page; label: string; devOnly?: boolean }[] = [
+interface NavItem {
+  id: Page;
+  label: string;
+  devOnly?: boolean;
+  children?: { id: Page; label: string }[];
+}
+
+const NAV_ITEMS: NavItem[] = [
   { id: "how-to", label: "How To Use" },
   { id: "asset-model", label: "Asset Model" },
-  { id: "assembly", label: "Assembly Instructions" },
-  { id: "startup", label: "Startup Procedure" },
-  { id: "shutdown", label: "Shut-Down Procedure" },
   { id: "run-test", label: "Run Test" },
   { id: "weebo", label: "Weebo" },
+  {
+    id: "assembly", label: "Documentation",
+    children: [
+      { id: "assembly", label: "Assembly Instructions" },
+      { id: "startup", label: "Startup Procedure" },
+      { id: "shutdown", label: "Shut-Down Procedure" },
+    ],
+  },
   { id: "dev-todo", label: "Developer To-Do", devOnly: true },
 ];
 
@@ -178,15 +190,30 @@ export function App() {
       <div className="app-body">
         <nav className={`sidebar${navOpen ? "" : " collapsed"}`}>
           <div className="sidebar-title">Contents</div>
-          {NAV_ITEMS.filter((item) => !item.devOnly || user === "engineer1").map((item) => (
-            <button
-              key={item.id}
-              className={`sidebar-item${page === item.id ? " active" : ""}`}
-              onClick={() => setPage(item.id)}
-            >
-              {item.label}
-            </button>
-          ))}
+          {NAV_ITEMS.filter((item) => !item.devOnly || user === "engineer1").map((item) =>
+            item.children ? (
+              <div key={item.label} className="sidebar-group">
+                <div className="sidebar-group-label">{item.label}</div>
+                {item.children.map((child) => (
+                  <button
+                    key={child.id}
+                    className={`sidebar-item sub${page === child.id ? " active" : ""}`}
+                    onClick={() => setPage(child.id)}
+                  >
+                    {child.label}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <button
+                key={item.id}
+                className={`sidebar-item${page === item.id ? " active" : ""}`}
+                onClick={() => setPage(item.id)}
+              >
+                {item.label}
+              </button>
+            )
+          )}
         </nav>
         <div className="page-content">
           {page === "how-to" ? (

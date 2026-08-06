@@ -293,45 +293,6 @@ export function RunTest({ onNavigate }: Props) {
         </div>
       )}
 
-      {/* Test run history — always visible */}
-      {history.length > 0 && (
-        <div className="test-run-history" style={{ textAlign: "left", maxWidth: 720, margin: "1.5rem auto 0" }}>
-          <h3>Test Run History</h3>
-          <div style={{ overflowX: "auto" }}>
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Run #</th>
-                  <th>Type</th>
-                  <th>Started</th>
-                  <th>Started By</th>
-                  <th>Status</th>
-                  <th>Duration</th>
-                </tr>
-              </thead>
-              <tbody>
-                {history.map((h) => (
-                  <tr key={h.id} className={!h.completed_at ? "active-row" : ""}>
-                    <td>{h.id}</td>
-                    <td>{h.test_type === "simplex" ? "Simplex" : "Triplex"}</td>
-                    <td>{fmtTime(h.started_at)}</td>
-                    <td>{h.started_by}</td>
-                    <td>
-                      {h.completed_at ? (
-                        <span className="status-badge completed">Completed</span>
-                      ) : (
-                        <span className="status-badge in-progress">In Progress — {stepLabel(h.current_step)}</span>
-                      )}
-                    </td>
-                    <td>{duration(h.started_at, h.completed_at)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
       {/* Step: Build */}
       {run?.current_step === "build" && (
         <div className="run-test-card">
@@ -535,6 +496,45 @@ export function RunTest({ onNavigate }: Props) {
           <button className="btn btn-primary" style={{ width: "auto", marginTop: "1rem" }} onClick={() => { setRun(null); setChecklist({}); setVerification(null); setTestType(null); loadHistory(); }}>
             Start Another Test
           </button>
+        </div>
+      )}
+
+      {/* Test run history — always visible at bottom */}
+      {history.length > 0 && (
+        <div className="test-run-history" style={{ textAlign: "left", maxWidth: 720, margin: "2rem auto 0" }}>
+          <h3>Test Run History</h3>
+          <div style={{ overflowX: "auto" }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Run #</th>
+                  <th>Type</th>
+                  <th>Started</th>
+                  <th>Started By</th>
+                  <th>Status</th>
+                  <th>Duration</th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.map((h) => (
+                  <tr key={h.id} className={!h.completed_at ? "active-row" : ""}>
+                    <td>{h.id}</td>
+                    <td>{h.test_type === "simplex" ? "Simplex" : "Triplex"}</td>
+                    <td>{fmtTime(h.started_at)}</td>
+                    <td>{h.started_by}</td>
+                    <td>
+                      {h.completed_at ? (
+                        <span className="status-badge completed">Completed</span>
+                      ) : (
+                        <span className="status-badge in-progress">In Progress — {stepLabel(h.current_step)}</span>
+                      )}
+                    </td>
+                    <td>{duration(h.started_at, h.completed_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
