@@ -58,6 +58,14 @@ export interface TestRun {
   started_at: string;
   started_by: string;
   completed_at: string | null;
+  asset_snapshot?: string | null;
+}
+
+export interface TestReport {
+  run: TestRun;
+  asset_snapshot: { position: string; display_name: string; part_number: string | null; part_serial: string | null; part_revision: string | null }[];
+  assembly_notes: { run_id: number; step_order: number; notes: string; action: string; sub_page: string }[];
+  memos: MemoEntry[];
 }
 
 export interface AssemblyVerification {

@@ -1,4 +1,4 @@
-import type { ActionItem, AskResponse, AssemblyInstruction, AssemblyRun, AssemblyStepLog, AssemblyVerification, ChangeEvent, ChangePayload, ComponentPhoto, DashboardData, MemoEntry, PartCatalogEntry, PositionLimit, PositionState, TestRun, UsageStats } from "../types";
+import type { ActionItem, AskResponse, AssemblyInstruction, AssemblyRun, AssemblyStepLog, AssemblyVerification, ChangeEvent, ChangePayload, ComponentPhoto, DashboardData, MemoEntry, PartCatalogEntry, PositionLimit, PositionState, TestReport, TestRun, UsageStats } from "../types";
 
 const BASE = "/api";
 
@@ -368,6 +368,10 @@ export async function deletePositionLimit(position: string) {
   return request<{ deleted: boolean }>(`/position-limits/${encodeURIComponent(position)}`, {
     method: "DELETE",
   });
+}
+
+export async function getTestReport(runId: number) {
+  return request<TestReport>(`/test-run/${runId}/report`);
 }
 
 export async function submitFeedback(category: string, message: string) {

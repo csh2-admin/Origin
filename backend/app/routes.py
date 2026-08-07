@@ -2,9 +2,11 @@ import io
 import json
 import os
 import tempfile
+import threading
 import time
 import uuid
 from datetime import datetime, timezone
+from urllib.request import Request, urlopen
 
 from flask import Blueprint, current_app, jsonify, make_response, request
 from PIL import Image
@@ -27,6 +29,29 @@ def _serialize(row):
         k: (v.isoformat() if isinstance(v, datetime) else v)
         for k, v in row.items()
     }
+
+
+GITHUB_REPO = "csh2-admin/Origin"
+
+def _create_github_issue(title: str, body: str, labels: list[str] | None = None):
+    token = os.environ.get("GITHUB_TOKEN")
+    if not token:
+        return
+    payload = json.dumps({"title": title, "body": body, "labels": labels or []}).encode()
+    req = Request(
+        f"https://api.github.com/repos/{GITHUB_REPO}/issues",
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        urlopen(req, timeout=10)
+    except Exception:
+        pass
 
 
 @bp.route("/login", methods=["POST"])
@@ -601,14 +626,31 @@ def advance_test_run(run_id, conn):
 
     checklist_state = body.get("checklist_state", row[1])
 
+    asset_snapshot = None
+    if next_step == "complete":
+        cur.execute(
+            """
+            SELECT p.name AS position, p.display_name,
+                   (SELECT installed_part_number FROM change_events ce
+                    WHERE ce.position = p.name ORDER BY effective_time DESC, recorded_time DESC LIMIT 1) AS part_number,
+                   (SELECT installed_part_serial FROM change_events ce
+                    WHERE ce.position = p.name ORDER BY effective_time DESC, recorded_time DESC LIMIT 1) AS part_serial,
+                   (SELECT installed_part_revision FROM change_events ce
+                    WHERE ce.position = p.name ORDER BY effective_time DESC, recorded_time DESC LIMIT 1) AS part_revision
+            FROM positions p ORDER BY p.display_name
+            """
+        )
+        asset_snapshot = json.dumps([_serialize(r) for r in _dict_rows(cur)])
+
     cur.execute(
         """
         UPDATE test_runs
-        SET current_step = %s, checklist_state = %s, completed_at = %s
+        SET current_step = %s, checklist_state = %s, completed_at = %s,
+            asset_snapshot = COALESCE(%s, asset_snapshot)
         WHERE id = %s
         RETURNING id, test_type, current_step, checklist_state, notes, started_at, started_by, completed_at
         """,
-        (next_step, checklist_state, completed_at, run_id),
+        (next_step, checklist_state, completed_at, asset_snapshot, run_id),
     )
     result = _dict_row(cur)
     conn.commit()
@@ -671,6 +713,93 @@ def update_notes(run_id, conn):
     result = _dict_row_from(cur.description, row)
     conn.commit()
     return jsonify(_serialize(result))
+
+
+@bp.route("/test-run/<int:run_id>/report")
+@require_db
+def get_test_report(run_id, conn):
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT id, test_type, current_step, checklist_state, notes,
+               started_at, started_by, completed_at, asset_snapshot
+        FROM test_runs WHERE id = %s
+        """,
+        (run_id,),
+    )
+    row = cur.fetchone()
+    if not row:
+        return jsonify({"detail": "Not found"}), 404
+    run = _serialize(dict(zip([d[0] for d in cur.description], row)))
+
+    # Parse asset snapshot
+    asset = []
+    if run.get("asset_snapshot"):
+        try:
+            asset = json.loads(run["asset_snapshot"]) if isinstance(run["asset_snapshot"], str) else run["asset_snapshot"]
+        except Exception:
+            asset = []
+
+    # Recent assembly runs completed before or during this test
+    cur.execute(
+        """
+        SELECT ar.id, ar.sub_page, ar.completed_at, ar.completed_by
+        FROM assembly_runs ar
+        WHERE ar.completed_at IS NOT NULL
+          AND ar.completed_at <= COALESCE(%s, now())
+        ORDER BY ar.completed_at DESC
+        LIMIT 9
+        """,
+        (run.get("completed_at"),),
+    )
+    assembly_runs = [_serialize(r) for r in _dict_rows(cur)]
+
+    # Assembly step notes from those runs
+    assembly_notes = []
+    run_ids = [a["id"] for a in assembly_runs]
+    if run_ids:
+        placeholders = ",".join(["%s"] * len(run_ids))
+        cur.execute(
+            f"""
+            SELECT asl.run_id, asl.step_order, asl.notes, ai.action, ar.sub_page
+            FROM assembly_step_logs asl
+            JOIN assembly_runs ar ON ar.id = asl.run_id
+            JOIN assembly_instructions ai ON ai.id = asl.instruction_id
+            WHERE asl.run_id IN ({placeholders})
+              AND asl.notes IS NOT NULL AND asl.notes != ''
+            ORDER BY ar.sub_page, asl.step_order
+            """,
+            run_ids,
+        )
+        assembly_notes = [_serialize(r) for r in _dict_rows(cur)]
+
+    # Weebo memos from the calendar day of test start
+    started_at = run.get("started_at", "")
+    memos = []
+    if started_at:
+        cur.execute(
+            """
+            SELECT id, logged_at, engineer, activity_type, summary,
+                   issues_found, action_items, severity, maintenance_done
+            FROM memos
+            WHERE logged_at::date = %s::date
+            ORDER BY
+                CASE severity
+                    WHEN 'critical' THEN 1 WHEN 'high' THEN 2
+                    WHEN 'medium' THEN 3 WHEN 'low' THEN 4 ELSE 5
+                END,
+                logged_at
+            """,
+            (started_at,),
+        )
+        memos = [_serialize(r) for r in _dict_rows(cur)]
+
+    return jsonify({
+        "run": run,
+        "asset_snapshot": asset,
+        "assembly_notes": assembly_notes,
+        "memos": memos,
+    })
 
 
 @bp.route("/test-run/verify-assembly")
@@ -1541,4 +1670,14 @@ def submit_feedback(conn):
     )
     row = _dict_row(cur)
     conn.commit()
-    return jsonify(_serialize(row)), 201
+    serialized = _serialize(row)
+    threading.Thread(
+        target=_create_github_issue,
+        args=(
+            f"[Feedback/{category}] {message[:80]}",
+            f"**Category:** {category}\n**From:** {serialized.get('submitted_by', 'unknown')}\n**Time:** {serialized.get('created_at', '')}\n\n{message}",
+            ["feedback"],
+        ),
+        daemon=True,
+    ).start()
+    return jsonify(serialized), 201

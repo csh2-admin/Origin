@@ -9,6 +9,7 @@ import { HowToPage } from "./components/HowTo";
 import { Login } from "./components/Login";
 import { PartDetail } from "./components/PartDetail";
 import { RunTest } from "./components/RunTest";
+import { TestHistory } from "./components/TestHistory";
 import { Triplex } from "./components/Triplex";
 import { WeeboActions } from "./components/WeeboActions";
 import { WeeboAsk } from "./components/WeeboAsk";
@@ -16,7 +17,7 @@ import { WeeboNewEntry } from "./components/WeeboNewEntry";
 import { WeeboRecords } from "./components/WeeboRecords";
 import type { PositionState } from "./types";
 
-type Page = "dashboard" | "how-to" | "asset-model" | "assembly" | "startup" | "shutdown" | "weebo" | "run-test" | "dev-todo";
+type Page = "dashboard" | "how-to" | "asset-model" | "assembly" | "startup" | "shutdown" | "weebo" | "run-test" | "test-history" | "dev-todo";
 
 interface NavItem {
   id: Page;
@@ -30,6 +31,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: "how-to", label: "How To Use" },
   { id: "asset-model", label: "Asset Model" },
   { id: "run-test", label: "Run Test" },
+  { id: "test-history", label: "Test History" },
   { id: "weebo", label: "Weebo" },
   {
     id: "assembly", label: "Documentation",
@@ -265,6 +267,8 @@ export function App() {
             </div>
           ) : page === "run-test" ? (
             <RunTest onNavigate={(p) => setPage(p as Page)} />
+          ) : page === "test-history" ? (
+            <TestHistory />
           ) : page === "assembly" ? (
             <Assembly user={user!} />
           ) : page === "startup" ? (

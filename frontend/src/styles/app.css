@@ -1476,6 +1476,47 @@ textarea {
   background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
+/* Test History */
+.test-history {
+  padding: 1.5rem;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.test-history h2 {
+  margin-bottom: 1rem;
+}
+
+.test-history .data-table tr {
+  cursor: pointer;
+}
+
+.test-history .data-table tr:hover td {
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+
+.test-history .data-table .selected-row td {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  font-weight: 600;
+}
+
+.test-report {
+  background: var(--neu-surface);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-raised);
+  padding: 1.25rem 1.5rem;
+}
+
+.test-report h1 { font-size: 1.3rem; }
+.test-report h2 { font-size: 1rem; margin-top: 1.25rem; margin-bottom: 0.5rem; border-bottom: 1px solid var(--gray-200); padding-bottom: 0.25rem; }
+.test-report h3 { font-size: 1.1rem; }
+.test-report .meta { font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 1rem; }
+
+.test-report .note-item {
+  margin-bottom: 0.5rem;
+  font-size: 0.85rem;
+}
+
 .status-badge {
   display: inline-block;
   padding: 0.15rem 0.5rem;
