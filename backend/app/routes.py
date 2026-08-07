@@ -36,10 +36,13 @@ GITHUB_REPO = "csh2-admin/Origin"
 def _create_github_issue(title: str, body: str, labels: list[str] | None = None):
     token = os.environ.get("GITHUB_TOKEN")
     if not token:
+        print("[GitHub Issue] No GITHUB_TOKEN set, skipping", flush=True)
         return
     payload = json.dumps({"title": title, "body": body, "labels": labels or []}).encode()
+    url = f"https://api.github.com/repos/{GITHUB_REPO}/issues"
+    print(f"[GitHub Issue] POST {url} title={title!r}", flush=True)
     req = Request(
-        f"https://api.github.com/repos/{GITHUB_REPO}/issues",
+        url,
         data=payload,
         headers={
             "Authorization": f"Bearer {token}",
@@ -49,11 +52,12 @@ def _create_github_issue(title: str, body: str, labels: list[str] | None = None)
         method="POST",
     )
     try:
-        urlopen(req, timeout=10)
+        resp = urlopen(req, timeout=10)
+        print(f"[GitHub Issue] Success: {resp.status}", flush=True)
     except Exception as exc:
         import traceback
         traceback.print_exc()
-        print(f"[GitHub Issue] Failed: {exc}")
+        print(f"[GitHub Issue] Failed: {exc}", flush=True)
 
 
 @bp.route("/login", methods=["POST"])
@@ -1679,3 +1683,35 @@ def submit_feedback(conn):
         ["feedback"],
     )
     return jsonify(serialized), 201
+
+
+@bp.route("/test-github", methods=["POST"])
+@require_db
+def test_github(conn):
+    """Diagnostic endpoint — fires a test GitHub issue and returns the result."""
+    token = os.environ.get("GITHUB_TOKEN")
+    if not token:
+        return jsonify({"error": "GITHUB_TOKEN not set in environment"}), 500
+    payload = json.dumps({
+        "title": "[Test] Origin GitHub integration check",
+        "body": "This is an automated test issue from Origin. You can close this.",
+        "labels": ["feedback"],
+    }).encode()
+    url = f"https://api.github.com/repos/{GITHUB_REPO}/issues"
+    req = Request(
+        url, data=payload,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        resp = urlopen(req, timeout=10)
+        resp_body = resp.read().decode()
+        return jsonify({"status": resp.status, "response": json.loads(resp_body)}), 200
+    except Exception as exc:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(exc)}), 500
