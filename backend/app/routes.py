@@ -795,7 +795,7 @@ def get_test_report(run_id, conn):
                 """
                 SELECT id, logged_at, engineer, activity_type, summary,
                        issues_found, action_items, severity, maintenance_done
-                FROM memos
+                FROM memo_log
                 WHERE logged_at::date = %s::date
                 ORDER BY
                     CASE severity
@@ -818,7 +818,7 @@ def get_test_report(run_id, conn):
             cur.execute(
                 """
                 SELECT id, action_text, status, responsible, due_date, notes, created_at
-                FROM actions
+                FROM action_items
                 WHERE created_at::date <= %s::date
                   AND (status IS NULL OR status NOT IN ('done', 'completed'))
                 ORDER BY
