@@ -1,5 +1,6 @@
 import io
 import json
+import logging
 import os
 import tempfile
 import threading
@@ -7,6 +8,8 @@ import time
 import uuid
 from datetime import datetime, timezone
 from urllib.request import Request, urlopen
+
+logger = logging.getLogger(__name__)
 
 from flask import Blueprint, current_app, jsonify, make_response, request
 from PIL import Image
@@ -33,14 +36,14 @@ def _serialize(row):
 
 GITHUB_REPO = "csh2-admin/Origin"
 
-def _create_github_issue(title: str, body: str, labels: list[str] | None = None):
+def _create_github_issue(title: str, body: str, labels: list[str] | None = None) -> dict:
     token = os.environ.get("GITHUB_TOKEN")
     if not token:
-        print("[GitHub Issue] No GITHUB_TOKEN set, skipping", flush=True)
-        return
+        logger.warning("[GitHub Issue] No GITHUB_TOKEN set, skipping")
+        return {"ok": False, "error": "GITHUB_TOKEN not set"}
     payload = json.dumps({"title": title, "body": body, "labels": labels or []}).encode()
     url = f"https://api.github.com/repos/{GITHUB_REPO}/issues"
-    print(f"[GitHub Issue] POST {url} title={title!r}", flush=True)
+    logger.info("[GitHub Issue] POST %s title=%r", url, title)
     req = Request(
         url,
         data=payload,
@@ -53,11 +56,11 @@ def _create_github_issue(title: str, body: str, labels: list[str] | None = None)
     )
     try:
         resp = urlopen(req, timeout=10)
-        print(f"[GitHub Issue] Success: {resp.status}", flush=True)
+        logger.info("[GitHub Issue] Success: %s", resp.status)
+        return {"ok": True, "status": resp.status}
     except Exception as exc:
-        import traceback
-        traceback.print_exc()
-        print(f"[GitHub Issue] Failed: {exc}", flush=True)
+        logger.exception("[GitHub Issue] Failed: %s", exc)
+        return {"ok": False, "error": str(exc)}
 
 
 @bp.route("/login", methods=["POST"])
@@ -1677,11 +1680,12 @@ def submit_feedback(conn):
     row = _dict_row(cur)
     conn.commit()
     serialized = _serialize(row)
-    _create_github_issue(
+    gh = _create_github_issue(
         f"[Feedback/{category}] {message[:80]}",
         f"**Category:** {category}\n**From:** {serialized.get('submitted_by', 'unknown')}\n**Time:** {serialized.get('created_at', '')}\n\n{message}",
         ["feedback"],
     )
+    serialized["github_issue"] = gh
     return jsonify(serialized), 201
 
 
