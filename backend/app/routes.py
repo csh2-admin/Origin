@@ -50,8 +50,10 @@ def _create_github_issue(title: str, body: str, labels: list[str] | None = None)
     )
     try:
         urlopen(req, timeout=10)
-    except Exception:
-        pass
+    except Exception as exc:
+        import traceback
+        traceback.print_exc()
+        print(f"[GitHub Issue] Failed: {exc}")
 
 
 @bp.route("/login", methods=["POST"])
