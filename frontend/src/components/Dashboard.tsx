@@ -44,9 +44,12 @@ export function Dashboard({ onNavigate }: Props) {
 
   const load = useCallback(async () => {
     try {
-      const [d, u, a] = await Promise.all([getDashboard(), getAllUsage(), getActions()]);
+      const [d, u] = await Promise.all([getDashboard(), getAllUsage()]);
       setData(d);
       setUsage(u);
+    } catch { /* ignore */ }
+    try {
+      const a = await getActions();
       setActions(a.filter((item) => item.status !== "Complete"));
     } catch { /* ignore */ }
     setLoading(false);
