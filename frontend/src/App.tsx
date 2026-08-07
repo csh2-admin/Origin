@@ -248,7 +248,6 @@ export function App() {
                       selected={selected}
                       onSelect={setSelected}
                       onRemoveInlineDcv={handleRemoveInlineDcv}
-                      usage={usage}
                       readOnly={isTimeTraveling}
                     />
                   </>
