@@ -750,58 +750,64 @@ def get_test_report(run_id, conn):
             asset = []
 
     # Recent assembly runs completed before or during this test
-    cur.execute(
-        """
-        SELECT ar.id, ar.sub_page, ar.completed_at, ar.completed_by
-        FROM assembly_runs ar
-        WHERE ar.completed_at IS NOT NULL
-          AND ar.completed_at <= COALESCE(%s, now())
-        ORDER BY ar.completed_at DESC
-        LIMIT 9
-        """,
-        (run.get("completed_at"),),
-    )
-    assembly_runs = [_serialize(r) for r in _dict_rows(cur)]
-
-    # Assembly step notes from those runs
     assembly_notes = []
-    run_ids = [a["id"] for a in assembly_runs]
-    if run_ids:
-        placeholders = ",".join(["%s"] * len(run_ids))
+    try:
         cur.execute(
-            f"""
-            SELECT asl.run_id, asl.step_order, asl.notes, ai.action, ar.sub_page
-            FROM assembly_step_logs asl
-            JOIN assembly_runs ar ON ar.id = asl.run_id
-            JOIN assembly_instructions ai ON ai.id = asl.instruction_id
-            WHERE asl.run_id IN ({placeholders})
-              AND asl.notes IS NOT NULL AND asl.notes != ''
-            ORDER BY ar.sub_page, asl.step_order
+            """
+            SELECT ar.id, ar.sub_page, ar.completed_at, ar.completed_by
+            FROM assembly_runs ar
+            WHERE ar.completed_at IS NOT NULL
+              AND ar.completed_at <= COALESCE(%s, now())
+            ORDER BY ar.completed_at DESC
+            LIMIT 9
             """,
-            run_ids,
+            (run.get("completed_at"),),
         )
-        assembly_notes = [_serialize(r) for r in _dict_rows(cur)]
+        assembly_runs = [_serialize(r) for r in _dict_rows(cur)]
+
+        # Assembly step notes from those runs
+        run_ids = [a["id"] for a in assembly_runs]
+        if run_ids:
+            placeholders = ",".join(["%s"] * len(run_ids))
+            cur.execute(
+                f"""
+                SELECT asl.run_id, asl.step_order, asl.notes, ai.action, ar.sub_page
+                FROM assembly_step_logs asl
+                JOIN assembly_runs ar ON ar.id = asl.run_id
+                JOIN assembly_instructions ai ON ai.id = asl.instruction_id
+                WHERE asl.run_id IN ({placeholders})
+                  AND asl.notes IS NOT NULL AND asl.notes != ''
+                ORDER BY ar.sub_page, asl.step_order
+                """,
+                run_ids,
+            )
+            assembly_notes = [_serialize(r) for r in _dict_rows(cur)]
+    except Exception:
+        conn.rollback()
 
     # Weebo memos from the calendar day of test start
     started_at = run.get("started_at", "")
     memos = []
     if started_at:
-        cur.execute(
-            """
-            SELECT id, logged_at, engineer, activity_type, summary,
-                   issues_found, action_items, severity, maintenance_done
-            FROM memos
-            WHERE logged_at::date = %s::date
-            ORDER BY
-                CASE severity
-                    WHEN 'critical' THEN 1 WHEN 'high' THEN 2
-                    WHEN 'medium' THEN 3 WHEN 'low' THEN 4 ELSE 5
-                END,
-                logged_at
-            """,
-            (started_at,),
-        )
-        memos = [_serialize(r) for r in _dict_rows(cur)]
+        try:
+            cur.execute(
+                """
+                SELECT id, logged_at, engineer, activity_type, summary,
+                       issues_found, action_items, severity, maintenance_done
+                FROM memos
+                WHERE logged_at::date = %s::date
+                ORDER BY
+                    CASE severity
+                        WHEN 'critical' THEN 1 WHEN 'high' THEN 2
+                        WHEN 'medium' THEN 3 WHEN 'low' THEN 4 ELSE 5
+                    END,
+                    logged_at
+                """,
+                (started_at,),
+            )
+            memos = [_serialize(r) for r in _dict_rows(cur)]
+        except Exception:
+            conn.rollback()
 
     return jsonify({
         "run": run,
