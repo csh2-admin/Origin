@@ -1673,13 +1673,9 @@ def submit_feedback(conn):
     row = _dict_row(cur)
     conn.commit()
     serialized = _serialize(row)
-    threading.Thread(
-        target=_create_github_issue,
-        args=(
-            f"[Feedback/{category}] {message[:80]}",
-            f"**Category:** {category}\n**From:** {serialized.get('submitted_by', 'unknown')}\n**Time:** {serialized.get('created_at', '')}\n\n{message}",
-            ["feedback"],
-        ),
-        daemon=True,
-    ).start()
+    _create_github_issue(
+        f"[Feedback/{category}] {message[:80]}",
+        f"**Category:** {category}\n**From:** {serialized.get('submitted_by', 'unknown')}\n**Time:** {serialized.get('created_at', '')}\n\n{message}",
+        ["feedback"],
+    )
     return jsonify(serialized), 201
