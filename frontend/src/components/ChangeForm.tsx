@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
-import { getPartsCatalog, postChange } from "../api/client";
+import { getPartsCatalog, getUsage, postChange } from "../api/client";
 import type { PartCatalogEntry, PositionState } from "../types";
 
 interface Props {
@@ -35,7 +35,13 @@ export function ChangeForm({ position, onSaved, onCancel }: Props) {
     getPartsCatalog(position.position)
       .then(setCatalog)
       .catch(() => setCatalog([]));
-  }, [position.position]);
+    if (position.part_number) {
+      getUsage(position.position).then((u) => {
+        if (u.est_cycles != null) setRemovedCycles(Math.round(u.est_cycles).toString());
+        if (u.runtime_hours != null) setRemovedHours(u.runtime_hours.toFixed(1));
+      }).catch(() => {});
+    }
+  }, [position.position, position.part_number]);
 
   function handlePartSelect(value: string) {
     setSelectedPart(value);
@@ -97,9 +103,8 @@ export function ChangeForm({ position, onSaved, onCancel }: Props) {
             <input
               type="number"
               value={removedCycles}
-              onChange={(e) => setRemovedCycles(e.target.value)}
-              placeholder="e.g. 12500"
-              min="0"
+              readOnly
+              style={{ background: "var(--surface-alt)", cursor: "default" }}
             />
           </div>
           <div className="field">
@@ -107,10 +112,8 @@ export function ChangeForm({ position, onSaved, onCancel }: Props) {
             <input
               type="number"
               value={removedHours}
-              onChange={(e) => setRemovedHours(e.target.value)}
-              placeholder="e.g. 48.5"
-              min="0"
-              step="0.1"
+              readOnly
+              style={{ background: "var(--surface-alt)", cursor: "default" }}
             />
           </div>
         </div>

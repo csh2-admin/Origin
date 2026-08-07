@@ -60,9 +60,15 @@ function Comp({
   selected: string | null; onSelect: (p: string) => void;
   disabled?: boolean; usage: UsageMap;
 }) {
-  const totalH = lines.length * 19;
-  const startY = y + h / 2 - totalH / 2 + 10;
   const cl = cycleLabel(usage, id);
+  const small = h <= 60;
+  const lineH = small ? 13 : 19;
+  const labelSize = small ? 10 : 14;
+  const subSize = small ? 8 : 10;
+  const contentLines = lines.length;
+  const extraLines = 1 + (cl && !disabled ? 1 : 0);
+  const totalH = contentLines * lineH + extraLines * (small ? 11 : 16);
+  const startY = y + h / 2 - totalH / 2 + lineH;
 
   return (
     <g
@@ -71,15 +77,15 @@ function Comp({
     >
       <rect className="comp-fill" x={x} y={y} width={w} height={h} rx={4} />
       {lines.map((line, i) => (
-        <text key={i} x={x + w / 2} y={startY + i * 19} className="comp-label">
+        <text key={i} x={x + w / 2} y={startY + i * lineH} className="comp-label" fontSize={labelSize}>
           {line}
         </text>
       ))}
-      <text x={x + w / 2} y={y + h - (cl ? 24 : 8)} className="comp-part-label">
+      <text x={x + w / 2} y={startY + contentLines * lineH + (small ? 4 : 6)} className="comp-part-label" fontSize={subSize}>
         {disabled ? "REMOVED" : partLabel(getPos(state, id))}
       </text>
       {cl && !disabled && (
-        <text x={x + w / 2} y={y + h - 6} className="comp-cycle-label">
+        <text x={x + w / 2} y={startY + contentLines * lineH + (small ? 15 : 22)} className="comp-cycle-label" fontSize={subSize}>
           {cl}
         </text>
       )}

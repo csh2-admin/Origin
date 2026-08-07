@@ -31,7 +31,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: "asset-model", label: "Asset Model" },
   { id: "run-test", label: "Run Test" },
   { id: "test-history", label: "Test History" },
-  { id: "weebo", label: "Weebo" },
+  { id: "weebo", label: "Weebo (BETA)" },
   {
     id: "assembly", label: "Documentation",
     children: [
