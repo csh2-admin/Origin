@@ -1,13 +1,10 @@
 import type { PositionState } from "../types";
 
-type UsageMap = Record<string, { est_cycles: number; runtime_hours: number }>;
-
 interface Props {
   onSelectHead: (head: number) => void;
   state: PositionState[];
   selected: string | null;
   onSelect: (position: string) => void;
-  usage: UsageMap;
 }
 
 function partLabel(s: PositionState | undefined): string {
@@ -15,15 +12,6 @@ function partLabel(s: PositionState | undefined): string {
   let lbl = s.part_number;
   if (s.part_revision) lbl += ` Rev ${s.part_revision}`;
   return lbl;
-}
-
-function cycleLabel(usage: UsageMap, id: string): string {
-  const u = usage[id];
-  if (!u || !u.est_cycles) return "";
-  const cycles = u.est_cycles;
-  if (cycles >= 1_000_000) return `${(cycles / 1_000_000).toFixed(1)}M cycles`;
-  if (cycles >= 1_000) return `${(cycles / 1_000).toFixed(1)}K cycles`;
-  return `${Math.round(cycles)} cycles`;
 }
 
 function PumpHead({ num, y, onSelect }: { num: number; y: number; onSelect: () => void }) {
@@ -40,15 +28,13 @@ function PumpHead({ num, y, onSelect }: { num: number; y: number; onSelect: () =
   );
 }
 
-export function Triplex({ onSelectHead, state, selected, onSelect, usage }: Props) {
+export function Triplex({ onSelectHead, state, selected, onSelect }: Props) {
   const headY = [150, 300, 450];
   const headMidY = headY.map((y) => y + 60);
   const dischX = 583;
 
   const motorPos = state.find((s) => s.position === "motor");
   const crankPos = state.find((s) => s.position === "crank_drive");
-  const motorCl = cycleLabel(usage, "motor");
-  const crankCl = cycleLabel(usage, "crank_drive");
 
   const crankTop = headY[0];
   const crankBottom = headY[2] + 120;
@@ -75,9 +61,6 @@ export function Triplex({ onSelectHead, state, selected, onSelect, usage }: Prop
         <text x={100} y={100} className="comp-part-label">
           {partLabel(motorPos)}
         </text>
-        {motorCl && (
-          <text x={100} y={120} className="comp-cycle-label">{motorCl}</text>
-        )}
       </g>
 
       {/* Motor to crank drive connection line */}
@@ -94,9 +77,6 @@ export function Triplex({ onSelectHead, state, selected, onSelect, usage }: Prop
         <text x={100} y={crankMidY + 32} className="comp-part-label">
           {partLabel(crankPos)}
         </text>
-        {crankCl && (
-          <text x={100} y={crankMidY + 50} className="comp-cycle-label">{crankCl}</text>
-        )}
       </g>
 
       {/* Crank drive to each pump head connection lines (no arrows) */}

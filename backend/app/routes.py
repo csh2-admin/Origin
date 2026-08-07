@@ -507,40 +507,51 @@ def get_dashboard(conn):
     cur = conn.cursor()
 
     # Active test run
-    cur.execute(
-        """
-        SELECT id, test_type, current_step, started_at, started_by
-        FROM test_runs WHERE completed_at IS NULL
-        ORDER BY started_at DESC LIMIT 1
-        """
-    )
     active_run = None
-    row = cur.fetchone()
-    if row:
-        active_run = _serialize(dict(zip([d[0] for d in cur.description], row)))
+    try:
+        cur.execute(
+            """
+            SELECT id, test_type, current_step, started_at, started_by
+            FROM test_runs WHERE completed_at IS NULL
+            ORDER BY started_at DESC LIMIT 1
+            """
+        )
+        row = cur.fetchone()
+        if row:
+            active_run = _serialize(dict(zip([d[0] for d in cur.description], row)))
+    except Exception:
+        conn.rollback()
 
     # Recent change events
-    cur.execute(
-        """
-        SELECT ce.id, ce.position, p.display_name, ce.effective_time,
-               ce.installed_part_number, ce.removed_part_number, ce.changed_by
-        FROM change_events ce
-        JOIN positions p ON p.name = ce.position
-        ORDER BY ce.effective_time DESC, ce.recorded_time DESC
-        LIMIT 10
-        """
-    )
-    recent_changes = [_serialize(r) for r in _dict_rows(cur)]
+    recent_changes = []
+    try:
+        cur.execute(
+            """
+            SELECT ce.id, ce.position, p.display_name, ce.effective_time,
+                   ce.installed_part_number, ce.removed_part_number, ce.changed_by
+            FROM change_events ce
+            JOIN positions p ON p.name = ce.position
+            ORDER BY ce.effective_time DESC, ce.recorded_time DESC
+            LIMIT 10
+            """
+        )
+        recent_changes = [_serialize(r) for r in _dict_rows(cur)]
+    except Exception:
+        conn.rollback()
 
     # Position limits with current usage for health check
-    cur.execute(
-        """
-        SELECT pl.position, p.display_name, pl.limit_type, pl.limit_value
-        FROM position_limits pl
-        JOIN positions p ON p.name = pl.position
-        """
-    )
-    limits = [_serialize(r) for r in _dict_rows(cur)]
+    limits = []
+    try:
+        cur.execute(
+            """
+            SELECT pl.position, p.display_name, pl.limit_type, pl.limit_value
+            FROM position_limits pl
+            JOIN positions p ON p.name = pl.position
+            """
+        )
+        limits = [_serialize(r) for r in _dict_rows(cur)]
+    except Exception:
+        conn.rollback()
 
     return jsonify({
         "active_run": active_run,

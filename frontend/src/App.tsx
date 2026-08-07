@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { getAllUsage, getMe, getState, logout, postChange } from "./api/client";
+import { getMe, getState, logout, postChange } from "./api/client";
 import { Assembly, ProcedurePage } from "./components/Assembly";
 import { Dashboard } from "./components/Dashboard";
 import { DevTodo } from "./components/DevTodo";
@@ -67,7 +67,6 @@ export function App() {
   const [state, setState] = useState<PositionState[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [viewAt, setViewAt] = useState("");
-  const [usage, setUsage] = useState<Record<string, { est_cycles: number; runtime_hours: number }>>({});
   const [activeHead, setActiveHead] = useState<number | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const [weeboTab, setWeeboTab] = useState<"records" | "new" | "actions" | "ask">("records");
@@ -91,25 +90,11 @@ export function App() {
     }
   }, [viewAt]);
 
-  const loadUsage = useCallback(async () => {
-    if (isTimeTraveling) {
-      setUsage({});
-      return;
-    }
-    try {
-      const u = await getAllUsage();
-      setUsage(u);
-    } catch {
-      setUsage({});
-    }
-  }, [isTimeTraveling]);
-
   useEffect(() => {
     if (user) {
       loadState();
-      loadUsage();
     }
-  }, [user, loadState, loadUsage]);
+  }, [user, loadState]);
 
   async function handleLogout() {
     await logout();
@@ -136,12 +121,10 @@ export function App() {
       note: "In-line DCV removed from system",
     });
     await loadState();
-    await loadUsage();
   }
 
   function handleRefresh() {
     loadState();
-    loadUsage();
   }
 
   function handleBackToTriplex() {
@@ -233,7 +216,6 @@ export function App() {
                     state={state}
                     selected={selected}
                     onSelect={setSelected}
-                    usage={usage}
                   />
                 ) : (
                   <>
