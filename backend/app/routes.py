@@ -809,11 +809,32 @@ def get_test_report(run_id, conn):
         except Exception:
             conn.rollback()
 
+    # Open actions as of the test date
+    actions = []
+    if started_at:
+        try:
+            cur.execute(
+                """
+                SELECT id, action_text, status, responsible, due_date, notes, created_at
+                FROM actions
+                WHERE created_at::date <= %s::date
+                  AND (status IS NULL OR status != 'done')
+                ORDER BY
+                    CASE WHEN due_date IS NOT NULL AND due_date <= %s::date THEN 0 ELSE 1 END,
+                    due_date NULLS LAST, created_at
+                """,
+                (started_at, started_at),
+            )
+            actions = [_serialize(r) for r in _dict_rows(cur)]
+        except Exception:
+            conn.rollback()
+
     return jsonify({
         "run": run,
         "asset_snapshot": asset,
         "assembly_notes": assembly_notes,
         "memos": memos,
+        "actions": actions,
     })
 
 

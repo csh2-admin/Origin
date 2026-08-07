@@ -33,12 +33,17 @@ const ASSEMBLY_PHASES = [
 ];
 
 
-function parseChecklist(run: TestRun): Record<string, boolean> {
+function parseChecklist(run: TestRun): Record<string, string> {
   try {
     const raw = typeof run.checklist_state === "string"
       ? JSON.parse(run.checklist_state)
       : run.checklist_state;
-    return raw && typeof raw === "object" ? raw : {};
+    if (!raw || typeof raw !== "object") return {};
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries(raw)) {
+      out[k] = typeof v === "boolean" ? (v ? "yes" : "") : String(v ?? "");
+    }
+    return out;
   } catch {
     return {};
   }
@@ -70,7 +75,7 @@ export function RunTest({ onNavigate }: Props) {
   const [history, setHistory] = useState<TestRun[]>([]);
   const [verification, setVerification] = useState<AssemblyVerification | null>(null);
   const [verifying, setVerifying] = useState(false);
-  const [checklist, setChecklist] = useState<Record<string, boolean>>({});
+  const [checklist, setChecklist] = useState<Record<string, string>>({});
   const [advancing, setAdvancing] = useState(false);
   const [testType, setTestType] = useState<"simplex" | "triplex" | null>(null);
   const [notes, setNotes] = useState("");
@@ -184,17 +189,33 @@ export function RunTest({ onNavigate }: Props) {
     setAdvancing(false);
   }
 
-  async function toggleItem(key: string, _items: string[]) {
+  async function setItemValue(key: string, value: string) {
     if (!run) return;
-    const next = { ...checklist, [key]: !checklist[key] };
+    const next = { ...checklist, [key]: value };
+    if (value === "yes") delete next[`${key}_notes`];
     setChecklist(next);
     try {
       await updateChecklist(run.id, next);
     } catch { /* best effort */ }
   }
 
-  function allChecked(prefix: string, items: string[]) {
-    return items.every((_, i) => checklist[`${prefix}_${i}`]);
+  async function setItemNotes(key: string, value: string) {
+    if (!run) return;
+    const next = { ...checklist, [`${key}_notes`]: value };
+    setChecklist(next);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(async () => {
+      try { await updateChecklist(run.id, next); } catch { /* best effort */ }
+    }, 600);
+  }
+
+  function allAnswered(prefix: string, items: string[]) {
+    return items.every((_, i) => {
+      const v = checklist[`${prefix}_${i}`];
+      if (v === "yes") return true;
+      if (v === "no") return !!checklist[`${prefix}_${i}_notes`]?.trim();
+      return false;
+    });
   }
 
   function handleNotesChange(value: string) {
@@ -411,14 +432,37 @@ export function RunTest({ onNavigate }: Props) {
         <div className="run-test-card">
           <h2>Step 3: Startup Procedure</h2>
           <p>Complete all items before proceeding to the test.</p>
-          <div className="checklist">
+          <div className="checklist-table">
+            <div className="checklist-header">
+              <span className="checklist-col-item">Item</span>
+              <span className="checklist-col-yn">Yes</span>
+              <span className="checklist-col-yn">No</span>
+              <span className="checklist-col-notes">Notes</span>
+            </div>
             {startupItems.map((item, i) => {
               const key = `startup_${i}`;
+              const val = checklist[key] ?? "";
               return (
-                <label key={key} className="checklist-item">
-                  <input type="checkbox" checked={!!checklist[key]} onChange={() => toggleItem(key, startupItems)} />
-                  <span>{item}</span>
-                </label>
+                <div key={key} className="checklist-row">
+                  <span className="checklist-col-item">{item}</span>
+                  <span className="checklist-col-yn">
+                    <input type="radio" name={key} checked={val === "yes"} onChange={() => setItemValue(key, "yes")} />
+                  </span>
+                  <span className="checklist-col-yn">
+                    <input type="radio" name={key} checked={val === "no"} onChange={() => setItemValue(key, "no")} />
+                  </span>
+                  <span className="checklist-col-notes">
+                    {val === "no" ? (
+                      <input
+                        type="text"
+                        className="checklist-note-input"
+                        placeholder="Explain why..."
+                        value={checklist[`${key}_notes`] ?? ""}
+                        onChange={(e) => setItemNotes(key, e.target.value)}
+                      />
+                    ) : null}
+                  </span>
+                </div>
               );
             })}
           </div>
@@ -433,7 +477,7 @@ export function RunTest({ onNavigate }: Props) {
             />
           </div>
 
-          {allChecked("startup", startupItems) && (
+          {allAnswered("startup", startupItems) && (
             <button className="btn btn-primary" style={{ width: "auto", marginTop: "1rem" }} onClick={handleAdvance} disabled={advancing}>
               {advancing ? "..." : "Startup Complete — Continue"}
             </button>
@@ -460,18 +504,41 @@ export function RunTest({ onNavigate }: Props) {
         <div className="run-test-card">
           <h2>Step 5: Shutdown Procedure</h2>
           <p>Complete all shutdown steps before finalizing.</p>
-          <div className="checklist">
+          <div className="checklist-table">
+            <div className="checklist-header">
+              <span className="checklist-col-item">Item</span>
+              <span className="checklist-col-yn">Yes</span>
+              <span className="checklist-col-yn">No</span>
+              <span className="checklist-col-notes">Notes</span>
+            </div>
             {shutdownItems.map((item, i) => {
               const key = `shutdown_${i}`;
+              const val = checklist[key] ?? "";
               return (
-                <label key={key} className="checklist-item">
-                  <input type="checkbox" checked={!!checklist[key]} onChange={() => toggleItem(key, shutdownItems)} />
-                  <span>{item}</span>
-                </label>
+                <div key={key} className="checklist-row">
+                  <span className="checklist-col-item">{item}</span>
+                  <span className="checklist-col-yn">
+                    <input type="radio" name={key} checked={val === "yes"} onChange={() => setItemValue(key, "yes")} />
+                  </span>
+                  <span className="checklist-col-yn">
+                    <input type="radio" name={key} checked={val === "no"} onChange={() => setItemValue(key, "no")} />
+                  </span>
+                  <span className="checklist-col-notes">
+                    {val === "no" ? (
+                      <input
+                        type="text"
+                        className="checklist-note-input"
+                        placeholder="Explain why..."
+                        value={checklist[`${key}_notes`] ?? ""}
+                        onChange={(e) => setItemNotes(key, e.target.value)}
+                      />
+                    ) : null}
+                  </span>
+                </div>
               );
             })}
           </div>
-          {allChecked("shutdown", shutdownItems) && (
+          {allAnswered("shutdown", shutdownItems) && (
             <button className="btn btn-primary" style={{ width: "auto", marginTop: "1rem" }} onClick={handleAdvance} disabled={advancing}>
               {advancing ? "..." : "Shutdown Complete — Finalize"}
             </button>

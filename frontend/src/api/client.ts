@@ -124,7 +124,7 @@ export async function startTestRun(testType: "simplex" | "triplex") {
   });
 }
 
-export async function advanceTestRun(runId: number, checklistState?: Record<string, boolean>) {
+export async function advanceTestRun(runId: number, checklistState?: Record<string, string>) {
   return request<TestRun>(`/test-run/${runId}/advance`, {
     method: "POST",
     body: JSON.stringify({ checklist_state: JSON.stringify(checklistState ?? {}) }),
@@ -137,7 +137,7 @@ export async function cancelTestRun(runId: number) {
   });
 }
 
-export async function updateChecklist(runId: number, checklistState: Record<string, boolean>) {
+export async function updateChecklist(runId: number, checklistState: Record<string, string>) {
   return request<TestRun>(`/test-run/${runId}/checklist`, {
     method: "PUT",
     body: JSON.stringify({ checklist_state: JSON.stringify(checklistState) }),

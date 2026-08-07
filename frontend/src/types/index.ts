@@ -66,6 +66,7 @@ export interface TestReport {
   asset_snapshot: { position: string; display_name: string; part_number: string | null; part_serial: string | null; part_revision: string | null }[];
   assembly_notes: { run_id: number; step_order: number; notes: string; action: string; sub_page: string }[];
   memos: MemoEntry[];
+  actions: { id: number; action_text: string; status: string | null; responsible: string | null; due_date: string | null; notes: string | null; created_at: string }[];
 }
 
 export interface AssemblyVerification {

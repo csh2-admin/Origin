@@ -1404,6 +1404,72 @@ textarea {
   cursor: pointer;
 }
 
+/* Checklist table (yes/no + notes) */
+.checklist-table {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.checklist-header {
+  display: grid;
+  grid-template-columns: 1fr 50px 50px 200px;
+  gap: 0;
+  padding: 0.5rem 0.75rem;
+  background: var(--surface-alt, rgba(174, 180, 185, 0.08));
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.checklist-row {
+  display: grid;
+  grid-template-columns: 1fr 50px 50px 200px;
+  gap: 0;
+  padding: 0.5rem 0.75rem;
+  align-items: center;
+  font-size: 0.88rem;
+  border-top: 1px solid var(--border);
+}
+
+.checklist-row:hover {
+  background: rgba(174, 180, 185, 0.05);
+}
+
+.checklist-col-item {
+  min-width: 0;
+}
+
+.checklist-col-yn {
+  text-align: center;
+  justify-self: center;
+}
+
+.checklist-col-yn input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.checklist-col-notes {
+  min-width: 0;
+}
+
+.checklist-note-input {
+  width: 100%;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.82rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+}
+
 /* Notes */
 .run-test-notes {
   margin-top: 1.25rem;

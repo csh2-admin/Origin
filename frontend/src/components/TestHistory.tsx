@@ -229,7 +229,7 @@ export function TestHistory() {
                   </>
                 )}
 
-                {/* Checklist state (startup/shutdown notes) */}
+                {/* Checklist state (startup/shutdown) */}
                 {report.run.checklist_state && (() => {
                   try {
                     const state = typeof report.run.checklist_state === "string"
@@ -237,18 +237,74 @@ export function TestHistory() {
                       : report.run.checklist_state;
                     const keys = Object.keys(state);
                     if (keys.length === 0) return null;
-                    const startupDone = keys.filter((k) => k.startsWith("startup_") && state[k]).length;
-                    const shutdownDone = keys.filter((k) => k.startsWith("shutdown_") && state[k]).length;
+                    const itemKeys = keys.filter((k) => !k.endsWith("_notes"));
+                    const startupKeys = itemKeys.filter((k) => k.startsWith("startup_"));
+                    const shutdownKeys = itemKeys.filter((k) => k.startsWith("shutdown_"));
+                    const renderSection = (title: string, sKeys: string[]) => {
+                      if (sKeys.length === 0) return null;
+                      const noItems = sKeys.filter((k) => state[k] === "no");
+                      const yesCount = sKeys.filter((k) => state[k] === "yes").length;
+                      const oldBool = sKeys.filter((k) => state[k] === true).length;
+                      return (
+                        <div style={{ marginBottom: "0.75rem" }}>
+                          <strong>{title}:</strong>{" "}
+                          {oldBool > 0
+                            ? <span>{oldBool} items checked (legacy format)</span>
+                            : <span>{yesCount} Yes, {noItems.length} No out of {sKeys.length} items</span>
+                          }
+                          {noItems.length > 0 && (
+                            <ul style={{ margin: "0.25rem 0 0 1.25rem", fontSize: "0.82rem" }}>
+                              {noItems.map((k) => (
+                                <li key={k}>
+                                  Item {parseInt(k.split("_").pop()!) + 1}: No
+                                  {state[`${k}_notes`] ? ` — ${state[`${k}_notes`]}` : ""}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      );
+                    };
                     return (
                       <>
                         <h2>Checklist Summary</h2>
-                        <p style={{ fontSize: "0.85rem" }}>
-                          Startup: {startupDone} items checked | Shutdown: {shutdownDone} items checked
-                        </p>
+                        <div style={{ fontSize: "0.85rem" }}>
+                          {renderSection("Startup", startupKeys)}
+                          {renderSection("Shutdown", shutdownKeys)}
+                        </div>
                       </>
                     );
                   } catch { return null; }
                 })()}
+
+                {/* Open actions */}
+                {report.actions?.length > 0 && (
+                  <>
+                    <h2>Open Actions</h2>
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Action</th>
+                          <th>Responsible</th>
+                          <th>Status</th>
+                          <th>Due Date</th>
+                          <th>Notes</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {report.actions.map((a) => (
+                          <tr key={a.id}>
+                            <td>{a.action_text}</td>
+                            <td>{a.responsible || "—"}</td>
+                            <td>{a.status || "open"}</td>
+                            <td>{a.due_date ? fmtDate(a.due_date) : "—"}</td>
+                            <td style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis" }}>{a.notes || "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </>
+                )}
 
                 {/* Weebo memos from that day */}
                 {report.memos.length > 0 && (
