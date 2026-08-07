@@ -456,6 +456,13 @@ textarea {
   text-align: right;
 }
 
+.health-no-limit {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  min-width: 6rem;
+  text-align: right;
+}
+
 /* Usage Limits */
 .usage-limits {
   padding: 1.5rem;

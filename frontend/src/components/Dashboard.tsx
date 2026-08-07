@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { getAllUsage, getDashboard } from "../api/client";
-import type { DashboardData, PositionLimit } from "../types";
+import { getActions, getAllUsage, getDashboard } from "../api/client";
+import type { ActionItem, DashboardData, PositionLimit } from "../types";
 
 interface Props {
   onNavigate: (page: string) => void;
@@ -39,13 +39,15 @@ function healthColor(pct: number): string {
 export function Dashboard({ onNavigate }: Props) {
   const [data, setData] = useState<DashboardData | null>(null);
   const [usage, setUsage] = useState<UsageMap>({});
+  const [actions, setActions] = useState<ActionItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     try {
-      const [d, u] = await Promise.all([getDashboard(), getAllUsage()]);
+      const [d, u, a] = await Promise.all([getDashboard(), getAllUsage(), getActions()]);
       setData(d);
       setUsage(u);
+      setActions(a.filter((item) => item.status !== "Complete"));
     } catch { /* ignore */ }
     setLoading(false);
   }, []);
@@ -55,10 +57,25 @@ export function Dashboard({ onNavigate }: Props) {
   if (loading) return null;
   if (!data) return <p>Failed to load dashboard.</p>;
 
-  const alerts = data.limits
-    .map((l) => ({ ...l, pct: healthPct(l, usage) }))
-    .filter((l) => l.pct != null && l.pct >= 70)
-    .sort((a, b) => (b.pct ?? 0) - (a.pct ?? 0));
+  // Build a list of all positions with usage, merging in limits where configured
+  const allPositions = Object.entries(usage).map(([position, u]) => {
+    const limit = data.limits.find((l) => l.position === position);
+    const pct = limit ? healthPct(limit, usage) : null;
+    return {
+      position,
+      display_name: limit?.display_name ?? position.replace(/_/g, " "),
+      est_cycles: u.est_cycles,
+      runtime_hours: u.runtime_hours,
+      limit,
+      pct,
+    };
+  }).sort((a, b) => {
+    // Parts over limit first (highest %), then parts with limits, then the rest
+    if (a.pct != null && b.pct != null) return b.pct - a.pct;
+    if (a.pct != null) return -1;
+    if (b.pct != null) return 1;
+    return a.display_name.localeCompare(b.display_name);
+  });
 
   return (
     <div className="dashboard">
@@ -103,35 +120,43 @@ export function Dashboard({ onNavigate }: Props) {
           )}
         </div>
 
-        {/* Part health alerts card */}
+        {/* Part health card */}
         <div className="dash-card">
           <div className="dash-card-header">Part Health</div>
           <div className="dash-card-body">
-            {alerts.length === 0 ? (
-              <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>
-                {data.limits.length === 0 ? "No usage limits configured." : "All parts within limits."}
-              </p>
+            {allPositions.length === 0 ? (
+              <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>No usage data available.</p>
             ) : (
               <div className="health-list">
-                {alerts.map((a) => (
+                {allPositions.map((a) => (
                   <div key={a.position} className="health-row">
                     <div className="health-info">
                       <strong>{a.display_name}</strong>
                       <span className="health-detail">
-                        {a.limit_type === "cycles"
-                          ? `${fmtNum(usage[a.position]?.est_cycles)} / ${fmtNum(a.limit_value)} cycles`
-                          : `${fmtNum(usage[a.position]?.runtime_hours, 1)} / ${fmtNum(a.limit_value, 1)} hrs`}
+                        {a.limit ? (
+                          a.limit.limit_type === "cycles"
+                            ? `${fmtNum(a.est_cycles)} / ${fmtNum(a.limit.limit_value)} cycles`
+                            : `${fmtNum(a.runtime_hours, 1)} / ${fmtNum(a.limit.limit_value, 1)} hrs`
+                        ) : (
+                          `${fmtNum(a.est_cycles)} cycles · ${fmtNum(a.runtime_hours, 1)} hrs`
+                        )}
                       </span>
                     </div>
-                    <div className="health-bar-track">
-                      <div
-                        className="health-bar-fill"
-                        style={{ width: `${Math.min(a.pct!, 100)}%`, background: healthColor(a.pct!) }}
-                      />
-                    </div>
-                    <span className="health-pct" style={{ color: healthColor(a.pct!) }}>
-                      {a.pct!.toFixed(0)}%
-                    </span>
+                    {a.pct != null ? (
+                      <>
+                        <div className="health-bar-track">
+                          <div
+                            className="health-bar-fill"
+                            style={{ width: `${Math.min(a.pct, 100)}%`, background: healthColor(a.pct) }}
+                          />
+                        </div>
+                        <span className="health-pct" style={{ color: healthColor(a.pct) }}>
+                          {a.pct.toFixed(0)}%
+                        </span>
+                      </>
+                    ) : (
+                      <span className="health-no-limit">No limit set</span>
+                    )}
                   </div>
                 ))}
               </div>
@@ -139,6 +164,42 @@ export function Dashboard({ onNavigate }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Open actions */}
+      {actions.length > 0 && (
+        <div className="dash-card" style={{ marginTop: "1rem" }}>
+          <div className="dash-card-header">Open Actions ({actions.length})</div>
+          <div className="dash-card-body">
+            <div style={{ overflowX: "auto" }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Action</th>
+                    <th>Responsible</th>
+                    <th>Status</th>
+                    <th>Due</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {actions.map((a) => {
+                    const overdue = a.due_date && new Date(a.due_date) < new Date();
+                    return (
+                      <tr key={a.id}>
+                        <td>{a.action_text}</td>
+                        <td>{a.responsible || "—"}</td>
+                        <td>{a.status}</td>
+                        <td style={{ color: overdue ? "var(--red-600)" : undefined, fontWeight: overdue ? 600 : undefined }}>
+                          {a.due_date ? new Date(a.due_date).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "—"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Recent activity */}
       <div className="dash-card" style={{ marginTop: "1rem" }}>

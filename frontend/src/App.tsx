@@ -28,7 +28,6 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { id: "dashboard", label: "Dashboard" },
-  { id: "how-to", label: "How To Use" },
   { id: "asset-model", label: "Asset Model" },
   { id: "run-test", label: "Run Test" },
   { id: "test-history", label: "Test History" },
@@ -39,6 +38,7 @@ const NAV_ITEMS: NavItem[] = [
       { id: "assembly", label: "Assembly Instructions" },
       { id: "startup", label: "Startup Procedure" },
       { id: "shutdown", label: "Shut-Down Procedure" },
+      { id: "how-to", label: "How To Use" },
     ],
   },
   { id: "dev-todo", label: "Developer To-Do", devOnly: true },
