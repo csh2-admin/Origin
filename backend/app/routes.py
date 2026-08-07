@@ -782,7 +782,8 @@ def get_test_report(run_id, conn):
                 run_ids,
             )
             assembly_notes = [_serialize(r) for r in _dict_rows(cur)]
-    except Exception:
+    except Exception as exc:
+        logger.warning("[Report] assembly query failed: %s", exc)
         conn.rollback()
 
     # Weebo memos from the calendar day of test start
@@ -806,7 +807,8 @@ def get_test_report(run_id, conn):
                 (started_at,),
             )
             memos = [_serialize(r) for r in _dict_rows(cur)]
-        except Exception:
+        except Exception as exc:
+            logger.warning("[Report] memos query failed: %s", exc)
             conn.rollback()
 
     # Open actions as of the test date
@@ -818,7 +820,7 @@ def get_test_report(run_id, conn):
                 SELECT id, action_text, status, responsible, due_date, notes, created_at
                 FROM actions
                 WHERE created_at::date <= %s::date
-                  AND (status IS NULL OR status != 'done')
+                  AND (status IS NULL OR status NOT IN ('done', 'completed'))
                 ORDER BY
                     CASE WHEN due_date IS NOT NULL AND due_date <= %s::date THEN 0 ELSE 1 END,
                     due_date NULLS LAST, created_at
@@ -826,7 +828,8 @@ def get_test_report(run_id, conn):
                 (started_at, started_at),
             )
             actions = [_serialize(r) for r in _dict_rows(cur)]
-        except Exception:
+        except Exception as exc:
+            logger.warning("[Report] actions query failed: %s", exc)
             conn.rollback()
 
     return jsonify({
