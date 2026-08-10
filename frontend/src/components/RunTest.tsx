@@ -80,7 +80,8 @@ export function RunTest({ onNavigate }: Props) {
   const [testType, setTestType] = useState<"simplex" | "triplex" | null>(null);
   const [notes, setNotes] = useState("");
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [recentAssemblies, setRecentAssemblies] = useState<Record<string, AssemblyRun | null>>({});
+  const [assemblyRuns, setAssemblyRuns] = useState<Record<string, AssemblyRun[]>>({});
+  const [assemblyChoice, setAssemblyChoice] = useState<Record<string, "new" | number>>({});
   const [startupItems, setStartupItems] = useState<string[]>([]);
   const [shutdownItems, setShutdownItems] = useState<string[]>([]);
 
@@ -103,18 +104,17 @@ export function RunTest({ onNavigate }: Props) {
     } catch { /* ignore */ }
   }, []);
 
-  const loadRecentAssemblies = useCallback(async () => {
-    const results: Record<string, AssemblyRun | null> = {};
+  const loadAssemblyRuns = useCallback(async () => {
+    const results: Record<string, AssemblyRun[]> = {};
     for (const phase of ASSEMBLY_PHASES) {
       try {
         const runs = await getAssemblyRuns(phase.id);
-        const latest = runs.length > 0 ? runs[0] : null;
-        results[phase.id] = latest;
+        results[phase.id] = runs.filter((r) => r.completed_at);
       } catch {
-        results[phase.id] = null;
+        results[phase.id] = [];
       }
     }
-    setRecentAssemblies(results);
+    setAssemblyRuns(results);
   }, []);
 
   useEffect(() => { loadRun(); loadHistory(); }, [loadRun, loadHistory]);
@@ -129,8 +129,8 @@ export function RunTest({ onNavigate }: Props) {
   }, []);
 
   useEffect(() => {
-    if (run?.current_step === "build") loadRecentAssemblies();
-  }, [run?.current_step, loadRecentAssemblies]);
+    if (run?.current_step === "build") loadAssemblyRuns();
+  }, [run?.current_step, loadAssemblyRuns]);
 
   async function handleStart() {
     if (!testType) return;
@@ -314,41 +314,70 @@ export function RunTest({ onNavigate }: Props) {
         <div className="run-test-card">
           <h2>Step 1: Pump Assembly</h2>
           <p>
-            {isTriplex
-              ? "Complete the assembly procedures for all 3 pump heads, or skip if reusing the previous assembly."
-              : "Complete the assembly procedures for Pump Head 1, or skip if reusing the previous assembly."}
+            For each procedure, choose to start a new assembly or select a previous completed run.
           </p>
 
           <div className="build-phases">
             {ASSEMBLY_PHASES.map((phase) => {
-              const recent = recentAssemblies[phase.id];
-              const completed = recent?.completed_at;
+              const runs = assemblyRuns[phase.id] ?? [];
+              const choice = assemblyChoice[phase.id];
               return (
-                <div key={phase.id} className={`build-phase-row${completed ? " done" : ""}`}>
-                  <div className="build-phase-status">
-                    {completed ? "✓" : "○"}
+                <div key={phase.id} className="build-phase-row" style={{ flexDirection: "column", alignItems: "stretch" }}>
+                  <strong style={{ marginBottom: "0.5rem" }}>{phase.label}</strong>
+                  <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                    <label className="test-type-option" style={{ flex: 1 }}>
+                      <input
+                        type="radio"
+                        name={`asm_${phase.id}`}
+                        checked={choice === "new"}
+                        onChange={() => setAssemblyChoice((prev) => ({ ...prev, [phase.id]: "new" }))}
+                      />
+                      <div className="test-type-card">
+                        <strong>Start New</strong>
+                      </div>
+                    </label>
+                    <label className="test-type-option" style={{ flex: 1 }}>
+                      <input
+                        type="radio"
+                        name={`asm_${phase.id}`}
+                        checked={typeof choice === "number"}
+                        onChange={() => {
+                          if (runs.length > 0) {
+                            setAssemblyChoice((prev) => ({ ...prev, [phase.id]: runs[0].id }));
+                          }
+                        }}
+                        disabled={runs.length === 0}
+                      />
+                      <div className="test-type-card">
+                        <strong>Use Previous</strong>
+                        {runs.length === 0 && <span style={{ fontSize: "0.75rem" }}>No completed runs</span>}
+                      </div>
+                    </label>
                   </div>
-                  <div className="build-phase-info">
-                    <strong>{phase.label}</strong>
-                    {completed ? (
-                      <span className="build-phase-meta">
-                        Completed by {recent.completed_by} — {fmtTime(recent.completed_at!)}
-                      </span>
-                    ) : recent ? (
-                      <span className="build-phase-meta build-phase-pending">
-                        In progress — started by {recent.started_by} at {fmtTime(recent.started_at)}
-                      </span>
-                    ) : (
-                      <span className="build-phase-meta">Not started</span>
-                    )}
-                  </div>
-                  <button
-                    className="btn btn-secondary"
-                    style={{ width: "auto", fontSize: "0.8rem" }}
-                    onClick={() => onNavigate("assembly")}
-                  >
-                    {completed ? "View" : recent ? "Resume" : "Start"}
-                  </button>
+                  {choice === "new" && (
+                    <button
+                      className="btn btn-secondary"
+                      style={{ width: "auto", fontSize: "0.8rem", alignSelf: "flex-start" }}
+                      onClick={() => onNavigate("assembly")}
+                    >
+                      Go to {phase.label}
+                    </button>
+                  )}
+                  {typeof choice === "number" && runs.length > 0 && (
+                    <select
+                      className="checklist-note-input"
+                      style={{ maxWidth: 400 }}
+                      value={choice}
+                      onChange={(e) => setAssemblyChoice((prev) => ({ ...prev, [phase.id]: parseInt(e.target.value) }))}
+                    >
+                      {runs.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          Run #{r.id} — {r.completed_by}, {fmtTime(r.completed_at!)}
+                          {r.pump_head ? ` (Head ${r.pump_head})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               );
             })}
@@ -359,19 +388,16 @@ export function RunTest({ onNavigate }: Props) {
               className="btn btn-primary"
               style={{ width: "auto" }}
               onClick={handleAdvance}
-              disabled={advancing}
+              disabled={advancing || ASSEMBLY_PHASES.some((p) => !assemblyChoice[p.id])}
             >
-              {advancing ? "..." : "Assembly Complete — Continue to Verification"}
-            </button>
-            <button
-              className="btn btn-secondary"
-              style={{ width: "auto" }}
-              onClick={handleAdvance}
-              disabled={advancing}
-            >
-              Skip — Reusing Previous Assembly
+              {advancing ? "..." : "Continue to Verification"}
             </button>
           </div>
+          {ASSEMBLY_PHASES.some((p) => !assemblyChoice[p.id]) && (
+            <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "0.5rem" }}>
+              Select an option for each procedure to continue.
+            </p>
+          )}
         </div>
       )}
 
