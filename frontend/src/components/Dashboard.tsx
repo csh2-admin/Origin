@@ -44,15 +44,15 @@ export function Dashboard({ onNavigate }: Props) {
 
   const load = useCallback(async () => {
     try {
-      const [d, u] = await Promise.all([getDashboard(), getAllUsage()]);
+      const d = await getDashboard();
       setData(d);
-      setUsage(u);
-    } catch { /* ignore */ }
-    try {
-      const a = await getActions();
-      setActions(a.filter((item) => item.status !== "Complete"));
     } catch { /* ignore */ }
     setLoading(false);
+    // Usage and actions load independently — don't block the dashboard render
+    getAllUsage().then((u) => setUsage(u)).catch(() => {});
+    getActions()
+      .then((a) => setActions(a.filter((item) => item.status !== "Complete")))
+      .catch(() => {});
   }, []);
 
   useEffect(() => { load(); }, [load]);

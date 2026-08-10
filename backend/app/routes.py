@@ -239,8 +239,7 @@ def get_all_usage(conn):
                 "runtime_hours": float(row[0]) if row and row[0] else 0,
             }
         except Exception as exc:
-            import traceback
-            traceback.print_exc()
+            logger.exception("Usage query failed for position %s", position)
             results[position] = {"est_cycles": 0, "runtime_hours": 0, "_error": str(exc)}
 
     _usage_cache = results
