@@ -13,9 +13,11 @@ function fmtTime(iso: string): string {
   });
 }
 
-function fmtNum(val: number | null | undefined, decimals = 0): string {
+function fmtNum(val: number | string | null | undefined, decimals = 0): string {
   if (val == null) return "—";
-  return val.toFixed(decimals);
+  const n = typeof val === "string" ? parseFloat(val) : val;
+  if (isNaN(n)) return "—";
+  return n.toFixed(decimals);
 }
 
 export function Dashboard({ onNavigate }: Props) {
