@@ -6,6 +6,8 @@ const PHASE_LABELS: Record<string, string> = {
   seal_installation: "Seal Installation",
   pump_assembly: "Pump Assembly",
   pump_installation: "Pump Installation",
+  startup_procedure: "Startup Procedure",
+  shutdown_procedure: "Shut-Down Procedure",
 };
 
 function fmtTime(iso: string): string {
@@ -228,6 +230,44 @@ export function TestHistory() {
                     ))}
                   </>
                 )}
+
+                {/* Startup / Shutdown procedure steps */}
+                {report.procedure_steps?.length > 0 && (() => {
+                  const grouped: Record<string, typeof report.procedure_steps> = {};
+                  for (const s of report.procedure_steps) {
+                    const key = s.sub_page;
+                    if (!grouped[key]) grouped[key] = [];
+                    grouped[key].push(s);
+                  }
+                  return Object.entries(grouped).map(([subPage, steps]) => (
+                    <div key={subPage}>
+                      <h2>{PHASE_LABELS[subPage] ?? subPage}</h2>
+                      <table className="data-table" style={{ fontSize: "0.82rem" }}>
+                        <thead>
+                          <tr>
+                            <th>#</th>
+                            <th>Action</th>
+                            <th>Status</th>
+                            <th>Notes</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {steps.map((s, i) => (
+                            <tr key={i}>
+                              <td>{s.step_order}</td>
+                              <td>{s.action}</td>
+                              <td style={{ color: s.checked_at ? "var(--green-600)" : "var(--text-secondary)" }}>
+                                {s.checked_at ? "Done" : "—"}
+                                {s.torque_actual && ` (${s.torque_actual}${s.torque_spec ? ` / ${s.torque_spec}` : ""})`}
+                              </td>
+                              <td style={{ color: "var(--text-secondary)" }}>{s.notes || "—"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ));
+                })()}
 
                 {/* Checklist state (startup/shutdown) */}
                 {report.run.checklist_state && (() => {

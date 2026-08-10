@@ -761,39 +761,49 @@ def get_test_report(run_id, conn):
         except Exception:
             asset = []
 
-    # Recent assembly runs completed before or during this test
+    # Assembly / startup / shutdown runs associated with this test
     assembly_notes = []
+    procedure_steps = []
     try:
+        test_start = run.get("started_at")
+        test_end = run.get("completed_at")
         cur.execute(
             """
-            SELECT ar.id, ar.sub_page, ar.completed_at, ar.completed_by
+            SELECT ar.id, ar.sub_page, ar.pump_head,
+                   ar.started_at, ar.completed_at, ar.completed_by
             FROM assembly_runs ar
-            WHERE ar.completed_at IS NOT NULL
-              AND ar.completed_at <= COALESCE(%s, now())
-            ORDER BY ar.completed_at DESC
-            LIMIT 9
+            WHERE ar.started_at >= %s
+              AND ar.started_at <= COALESCE(%s, now())
+            ORDER BY ar.started_at
             """,
-            (run.get("completed_at"),),
+            (test_start, test_end),
         )
         assembly_runs = [_serialize(r) for r in _dict_rows(cur)]
 
-        # Assembly step notes from those runs
         run_ids = [a["id"] for a in assembly_runs]
         if run_ids:
             placeholders = ",".join(["%s"] * len(run_ids))
+            # Step details for all runs
             cur.execute(
                 f"""
-                SELECT asl.run_id, asl.step_order, asl.notes, ai.action, ar.sub_page
+                SELECT asl.run_id, asl.step_order, asl.notes,
+                       asl.checked_at, asl.torque_actual,
+                       ai.action, ai.torque_spec, ar.sub_page, ar.pump_head
                 FROM assembly_step_logs asl
                 JOIN assembly_runs ar ON ar.id = asl.run_id
                 JOIN assembly_instructions ai ON ai.id = asl.instruction_id
                 WHERE asl.run_id IN ({placeholders})
-                  AND asl.notes IS NOT NULL AND asl.notes != ''
-                ORDER BY ar.sub_page, asl.step_order
+                ORDER BY ar.sub_page, ar.pump_head, asl.step_order
                 """,
                 run_ids,
             )
-            assembly_notes = [_serialize(r) for r in _dict_rows(cur)]
+            all_steps = [_serialize(r) for r in _dict_rows(cur)]
+
+            for s in all_steps:
+                if s["sub_page"] in ("startup_procedure", "shutdown_procedure"):
+                    procedure_steps.append(s)
+                elif s.get("notes"):
+                    assembly_notes.append(s)
     except Exception as exc:
         logger.warning("[Report] assembly query failed: %s", exc)
         conn.rollback()
@@ -848,6 +858,7 @@ def get_test_report(run_id, conn):
         "run": run,
         "asset_snapshot": asset,
         "assembly_notes": assembly_notes,
+        "procedure_steps": procedure_steps,
         "memos": memos,
         "actions": actions,
     })
