@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getActions, getAllUsage, getDashboard } from "../api/client";
 import type { ActionItem, DashboardData, PositionLimit } from "../types";
 
@@ -41,39 +41,53 @@ export function Dashboard({ onNavigate }: Props) {
   const [usage, setUsage] = useState<UsageMap>({});
   const [actions, setActions] = useState<ActionItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const mounted = useRef(true);
 
-  const load = useCallback(async () => {
-    try {
-      const d = await getDashboard();
-      setData(d);
-    } catch { /* ignore */ }
-    setLoading(false);
-    // Usage and actions load independently — don't block the dashboard render
-    getAllUsage().then((u) => setUsage(u)).catch(() => {});
-    getActions()
-      .then((a) => setActions(a.filter((item) => item.status !== "Complete")))
-      .catch(() => {});
+  useEffect(() => {
+    mounted.current = true;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const d = await getDashboard();
+        if (!cancelled) setData(d);
+      } catch (err) {
+        if (!cancelled) setError("Could not load dashboard data.");
+      }
+      if (!cancelled) setLoading(false);
+
+      // Usage and actions load independently — don't block the dashboard render
+      getAllUsage()
+        .then((u) => { if (!cancelled) setUsage(u); })
+        .catch(() => {});
+      getActions()
+        .then((a) => { if (!cancelled) setActions(a.filter((item) => item.status !== "Complete")); })
+        .catch(() => {});
+    })();
+
+    return () => { cancelled = true; mounted.current = false; };
   }, []);
 
-  useEffect(() => { load(); }, [load]);
-
   if (loading) return null;
-  if (!data) return <p>Failed to load dashboard.</p>;
+  if (error || !data) return <p>{error || "Failed to load dashboard."}</p>;
+
+  const limits = data.limits ?? [];
+  const recentChanges = data.recent_changes ?? [];
 
   // Build a list of all positions with usage, merging in limits where configured
   const allPositions = Object.entries(usage).map(([position, u]) => {
-    const limit = data.limits.find((l) => l.position === position);
+    const limit = limits.find((l) => l.position === position);
     const pct = limit ? healthPct(limit, usage) : null;
     return {
       position,
       display_name: limit?.display_name ?? position.replace(/_/g, " "),
-      est_cycles: u.est_cycles,
-      runtime_hours: u.runtime_hours,
+      est_cycles: u?.est_cycles ?? 0,
+      runtime_hours: u?.runtime_hours ?? 0,
       limit,
       pct,
     };
   }).sort((a, b) => {
-    // Parts over limit first (highest %), then parts with limits, then the rest
     if (a.pct != null && b.pct != null) return b.pct - a.pct;
     if (a.pct != null) return -1;
     if (b.pct != null) return 1;
@@ -208,7 +222,7 @@ export function Dashboard({ onNavigate }: Props) {
       <div className="dash-card" style={{ marginTop: "1rem" }}>
         <div className="dash-card-header">Recent Activity</div>
         <div className="dash-card-body">
-          {data.recent_changes.length === 0 ? (
+          {recentChanges.length === 0 ? (
             <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>No recent changes.</p>
           ) : (
             <div style={{ overflowX: "auto" }}>
@@ -222,7 +236,7 @@ export function Dashboard({ onNavigate }: Props) {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.recent_changes.map((c) => (
+                  {recentChanges.map((c) => (
                     <tr key={c.id}>
                       <td>{fmtTime(c.effective_time)}</td>
                       <td>{c.display_name}</td>
