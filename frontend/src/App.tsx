@@ -10,6 +10,7 @@ import { Login } from "./components/Login";
 import { PartDetail } from "./components/PartDetail";
 import { RunTest } from "./components/RunTest";
 import { TestHistory } from "./components/TestHistory";
+import { SystemDiagnostics } from "./components/SystemDiagnostics";
 import { Triplex } from "./components/Triplex";
 import { WeeboActions } from "./components/WeeboActions";
 import { WeeboAsk } from "./components/WeeboAsk";
@@ -17,7 +18,7 @@ import { WeeboNewEntry } from "./components/WeeboNewEntry";
 import { WeeboRecords } from "./components/WeeboRecords";
 import type { PositionState } from "./types";
 
-type Page = "dashboard" | "how-to" | "asset-model" | "assembly" | "startup" | "shutdown" | "weebo" | "run-test" | "test-history" | "dev-todo";
+type Page = "dashboard" | "how-to" | "asset-model" | "assembly" | "startup" | "shutdown" | "weebo" | "run-test" | "test-history" | "diagnostics" | "dev-todo";
 
 interface NavItem {
   id: Page;
@@ -31,6 +32,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: "asset-model", label: "Asset Model" },
   { id: "run-test", label: "Run Test" },
   { id: "test-history", label: "Test History" },
+  { id: "diagnostics", label: "System Diagnostics" },
   { id: "weebo", label: "Weebo (BETA)" },
   {
     id: "assembly", label: "Documentation",
@@ -256,6 +258,8 @@ export function App() {
             <ProcedurePage user={user!} subPage="startup_procedure" label="Startup Procedure" />
           ) : page === "shutdown" ? (
             <ProcedurePage user={user!} subPage="shutdown_procedure" label="Shut-Down Procedure" />
+          ) : page === "diagnostics" ? (
+            <SystemDiagnostics />
           ) : page === "weebo" ? (
             <div className="weebo-page">
               <div className="weebo-tabs">
