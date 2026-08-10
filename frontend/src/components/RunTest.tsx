@@ -330,7 +330,10 @@ export function RunTest({ onNavigate }: Props) {
                         type="radio"
                         name={`asm_${phase.id}`}
                         checked={choice === "new"}
-                        onChange={() => setAssemblyChoice((prev) => ({ ...prev, [phase.id]: "new" }))}
+                        onChange={() => {
+                          setAssemblyChoice((prev) => ({ ...prev, [phase.id]: "new" }));
+                          onNavigate("assembly");
+                        }}
                       />
                       <div className="test-type-card">
                         <strong>Start New</strong>
@@ -354,15 +357,6 @@ export function RunTest({ onNavigate }: Props) {
                       </div>
                     </label>
                   </div>
-                  {choice === "new" && (
-                    <button
-                      className="btn btn-secondary"
-                      style={{ width: "auto", fontSize: "0.8rem", alignSelf: "flex-start" }}
-                      onClick={() => onNavigate("assembly")}
-                    >
-                      Go to {phase.label}
-                    </button>
-                  )}
                   {typeof choice === "number" && runs.length > 0 && (
                     <select
                       className="checklist-note-input"
@@ -581,50 +575,12 @@ export function RunTest({ onNavigate }: Props) {
             {run.test_type === "simplex" ? "Simplex" : "Triplex"} test started by {run.started_by} at {new Date(run.started_at).toLocaleString()}
             {run.completed_at && <> — Completed at {new Date(run.completed_at).toLocaleString()}</>}
           </p>
-          <button className="btn btn-primary" style={{ width: "auto", marginTop: "1rem" }} onClick={() => { setRun(null); setChecklist({}); setVerification(null); setTestType(null); loadHistory(); }}>
+          <button className="btn btn-primary" style={{ width: "auto", marginTop: "1rem" }} onClick={() => { setRun(null); setChecklist({}); setVerification(null); setTestType(null); }}>
             Start Another Test
           </button>
         </div>
       )}
 
-      {/* Test run history — always visible at bottom */}
-      {history.length > 0 && (
-        <div className="test-run-history" style={{ textAlign: "left", maxWidth: 720, margin: "2rem auto 0" }}>
-          <h3>Test Run History</h3>
-          <div style={{ overflowX: "auto" }}>
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Run #</th>
-                  <th>Type</th>
-                  <th>Started</th>
-                  <th>Started By</th>
-                  <th>Status</th>
-                  <th>Duration</th>
-                </tr>
-              </thead>
-              <tbody>
-                {history.map((h) => (
-                  <tr key={h.id} className={!h.completed_at ? "active-row" : ""}>
-                    <td>{h.id}</td>
-                    <td>{h.test_type === "simplex" ? "Simplex" : "Triplex"}</td>
-                    <td>{fmtTime(h.started_at)}</td>
-                    <td>{h.started_by}</td>
-                    <td>
-                      {h.completed_at ? (
-                        <span className="status-badge completed">Completed</span>
-                      ) : (
-                        <span className="status-badge in-progress">In Progress — {stepLabel(h.current_step)}</span>
-                      )}
-                    </td>
-                    <td>{duration(h.started_at, h.completed_at)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
