@@ -211,6 +211,7 @@ def get_all_usage(conn):
             default_interval = 1.0
 
         try:
+            cur.execute("SET LOCAL statement_timeout = '30s'")
             cur.execute(
                 f"""
                 WITH motor_speed_data AS (
@@ -239,8 +240,9 @@ def get_all_usage(conn):
                 "runtime_hours": float(row[0]) if row and row[0] else 0,
             }
         except Exception as exc:
-            logger.exception("Usage query failed for position %s", position)
-            results[position] = {"est_cycles": 0, "runtime_hours": 0, "_error": str(exc)}
+            logger.warning("Usage query failed for position %s: %s", position, exc)
+            conn.rollback()
+            results[position] = {"est_cycles": 0, "runtime_hours": 0}
 
     _usage_cache = results
     _usage_cache_ts = time.time()

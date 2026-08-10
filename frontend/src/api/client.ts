@@ -2,9 +2,9 @@ import type { ActionItem, AskResponse, AssemblyInstruction, AssemblyRun, Assembl
 
 const BASE = "/api";
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(path: string, init?: RequestInit, timeoutMs = 15000): Promise<T> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   const res = await fetch(`${BASE}${path}`, {
     credentials: "include",
     signal: controller.signal,
@@ -57,7 +57,7 @@ export async function getPartsCatalog(position?: string) {
 }
 
 export async function getAllUsage() {
-  return request<Record<string, { est_cycles: number; runtime_hours: number }>>("/usage");
+  return request<Record<string, { est_cycles: number; runtime_hours: number }>>("/usage", undefined, 120000);
 }
 
 export async function getUsage(position: string) {
