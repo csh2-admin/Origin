@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
-import { getActions, getAllUsage, getDashboard } from "../api/client";
-import type { ActionItem, DashboardData, PositionLimit } from "../types";
+import { useEffect, useState } from "react";
+import { getActions, getDashboard } from "../api/client";
+import type { ActionItem, DashboardData } from "../types";
 
 interface Props {
   onNavigate: (page: string) => void;
@@ -18,55 +18,30 @@ function fmtNum(val: number | null | undefined, decimals = 0): string {
   return val.toFixed(decimals);
 }
 
-interface UsageMap {
-  [position: string]: { est_cycles: number; runtime_hours: number };
-}
-
-function healthPct(limit: PositionLimit, usage: UsageMap): number | null {
-  const u = usage[limit.position];
-  if (!u) return null;
-  const current = limit.limit_type === "cycles" ? u.est_cycles : u.runtime_hours;
-  if (!current || limit.limit_value <= 0) return null;
-  return (current / limit.limit_value) * 100;
-}
-
-function healthColor(pct: number): string {
-  if (pct >= 90) return "var(--red-600)";
-  if (pct >= 70) return "#d97706";
-  return "var(--green-600)";
-}
-
 export function Dashboard({ onNavigate }: Props) {
   const [data, setData] = useState<DashboardData | null>(null);
-  const [usage, setUsage] = useState<UsageMap>({});
   const [actions, setActions] = useState<ActionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const mounted = useRef(true);
 
   useEffect(() => {
-    mounted.current = true;
     let cancelled = false;
 
     (async () => {
       try {
         const d = await getDashboard();
         if (!cancelled) setData(d);
-      } catch (err) {
+      } catch {
         if (!cancelled) setError("Could not load dashboard data.");
       }
       if (!cancelled) setLoading(false);
 
-      // Usage and actions load independently — don't block the dashboard render
-      getAllUsage()
-        .then((u) => { if (!cancelled) setUsage(u); })
-        .catch(() => {});
       getActions()
         .then((a) => { if (!cancelled) setActions(a.filter((item) => item.status !== "Complete")); })
         .catch(() => {});
     })();
 
-    return () => { cancelled = true; mounted.current = false; };
+    return () => { cancelled = true; };
   }, []);
 
   if (loading) return null;
@@ -74,25 +49,6 @@ export function Dashboard({ onNavigate }: Props) {
 
   const limits = data.limits ?? [];
   const recentChanges = data.recent_changes ?? [];
-
-  // Build a list of all positions with usage, merging in limits where configured
-  const allPositions = Object.entries(usage).map(([position, u]) => {
-    const limit = limits.find((l) => l.position === position);
-    const pct = limit ? healthPct(limit, usage) : null;
-    return {
-      position,
-      display_name: limit?.display_name ?? position.replace(/_/g, " "),
-      est_cycles: u?.est_cycles ?? 0,
-      runtime_hours: u?.runtime_hours ?? 0,
-      limit,
-      pct,
-    };
-  }).sort((a, b) => {
-    if (a.pct != null && b.pct != null) return b.pct - a.pct;
-    if (a.pct != null) return -1;
-    if (b.pct != null) return 1;
-    return a.display_name.localeCompare(b.display_name);
-  });
 
   return (
     <div className="dashboard">
@@ -137,47 +93,31 @@ export function Dashboard({ onNavigate }: Props) {
           )}
         </div>
 
-        {/* Part health card */}
+        {/* Part limits card */}
         <div className="dash-card">
-          <div className="dash-card-header">Part Health</div>
+          <div className="dash-card-header">Part Limits</div>
           <div className="dash-card-body">
-            {allPositions.length === 0 ? (
-              <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>No usage data available.</p>
+            {limits.length === 0 ? (
+              <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>No limits configured.</p>
             ) : (
               <div className="health-list">
-                {allPositions.map((a) => (
-                  <div key={a.position} className="health-row">
+                {limits.map((l) => (
+                  <div key={l.position} className="health-row">
                     <div className="health-info">
-                      <strong>{a.display_name}</strong>
+                      <strong>{l.display_name}</strong>
                       <span className="health-detail">
-                        {a.limit ? (
-                          a.limit.limit_type === "cycles"
-                            ? `${fmtNum(a.est_cycles)} / ${fmtNum(a.limit.limit_value)} cycles`
-                            : `${fmtNum(a.runtime_hours, 1)} / ${fmtNum(a.limit.limit_value, 1)} hrs`
-                        ) : (
-                          `${fmtNum(a.est_cycles)} cycles · ${fmtNum(a.runtime_hours, 1)} hrs`
-                        )}
+                        {l.limit_type === "cycles"
+                          ? `${fmtNum(l.limit_value)} cycle limit`
+                          : `${fmtNum(l.limit_value, 1)} hour limit`}
                       </span>
                     </div>
-                    {a.pct != null ? (
-                      <>
-                        <div className="health-bar-track">
-                          <div
-                            className="health-bar-fill"
-                            style={{ width: `${Math.min(a.pct, 100)}%`, background: healthColor(a.pct) }}
-                          />
-                        </div>
-                        <span className="health-pct" style={{ color: healthColor(a.pct) }}>
-                          {a.pct.toFixed(0)}%
-                        </span>
-                      </>
-                    ) : (
-                      <span className="health-no-limit">No limit set</span>
-                    )}
                   </div>
                 ))}
               </div>
             )}
+            <p style={{ color: "var(--text-secondary)", fontSize: "0.75rem", marginTop: "0.5rem" }}>
+              View real-time usage on individual parts in the Asset Model.
+            </p>
           </div>
         </div>
       </div>
