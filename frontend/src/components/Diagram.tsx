@@ -79,9 +79,10 @@ export function Diagram({ state, selected, onSelect, onRemoveInlineDcv, readOnly
     const b = COMP_BOUNDS[selected];
     const cx = b.x + b.w / 2;
     const cy = b.y + b.h / 2;
-    const size = Math.max(b.w, b.h) + ZOOM_PAD * 2;
+    const scale = selected === "pump_housing" ? 0.65 : 1;
+    const size = (Math.max(b.w, b.h) + ZOOM_PAD * 2) * scale;
     const aspect = 1300 / 750;
-    const vw = Math.max(size * aspect, b.w + ZOOM_PAD * 2);
+    const vw = Math.max(size * aspect, (b.w + ZOOM_PAD * 2) * scale);
     const vh = vw / aspect;
     return `${cx - vw / 2} ${cy - vh / 2} ${vw} ${vh}`;
   }, [selected]);
