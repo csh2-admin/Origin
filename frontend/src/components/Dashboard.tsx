@@ -13,13 +13,6 @@ function fmtTime(iso: string): string {
   });
 }
 
-function fmtNum(val: number | string | null | undefined, decimals = 0): string {
-  if (val == null) return "—";
-  const n = typeof val === "string" ? parseFloat(val) : val;
-  if (isNaN(n)) return "—";
-  return n.toFixed(decimals);
-}
-
 export function Dashboard({ onNavigate }: Props) {
   const [data, setData] = useState<DashboardData | null>(null);
   const [actions, setActions] = useState<ActionItem[]>([]);
@@ -49,7 +42,6 @@ export function Dashboard({ onNavigate }: Props) {
   if (loading) return null;
   if (error || !data) return <p>{error || "Failed to load dashboard."}</p>;
 
-  const limits = data.limits ?? [];
   const recentChanges = data.recent_changes ?? [];
 
   return (
@@ -95,33 +87,6 @@ export function Dashboard({ onNavigate }: Props) {
           )}
         </div>
 
-        {/* Part limits card */}
-        <div className="dash-card">
-          <div className="dash-card-header">Part Limits</div>
-          <div className="dash-card-body">
-            {limits.length === 0 ? (
-              <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>No limits configured.</p>
-            ) : (
-              <div className="health-list">
-                {limits.map((l) => (
-                  <div key={l.position} className="health-row">
-                    <div className="health-info">
-                      <strong>{l.display_name}</strong>
-                      <span className="health-detail">
-                        {l.limit_type === "cycles"
-                          ? `${fmtNum(l.limit_value)} cycle limit`
-                          : `${fmtNum(l.limit_value, 1)} hour limit`}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            <p style={{ color: "var(--text-secondary)", fontSize: "0.75rem", marginTop: "0.5rem" }}>
-              View real-time usage on individual parts in the Asset Model.
-            </p>
-          </div>
-        </div>
       </div>
 
       {/* Open actions */}
