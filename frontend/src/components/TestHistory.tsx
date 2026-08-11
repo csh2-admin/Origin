@@ -110,7 +110,12 @@ export function TestHistory() {
     setTimeout(() => { w.print(); w.close(); }, 300);
   }
 
-  if (loading) return null;
+  if (loading) return (
+    <div className="test-history">
+      <h2>Test Run History</h2>
+      <p style={{ color: "var(--text-secondary)" }}>Loading history...</p>
+    </div>
+  );
 
   return (
     <div className="test-history">
