@@ -497,11 +497,14 @@ export function RunTest({ onNavigate }: Props) {
             />
           </div>
 
-          {allAnswered("startup", startupItems) && (
-            <button className="btn btn-primary" style={{ width: "auto", marginTop: "1rem" }} onClick={handleAdvance} disabled={advancing}>
-              {advancing ? "..." : "Startup Complete — Continue"}
-            </button>
-          )}
+          <button
+            className="btn btn-primary"
+            style={{ width: "auto", marginTop: "1rem" }}
+            onClick={handleAdvance}
+            disabled={advancing || !allAnswered("startup", startupItems)}
+          >
+            {advancing ? "..." : "Startup Complete — Continue"}
+          </button>
         </div>
       )}
 
@@ -558,11 +561,14 @@ export function RunTest({ onNavigate }: Props) {
               );
             })}
           </div>
-          {allAnswered("shutdown", shutdownItems) && (
-            <button className="btn btn-primary" style={{ width: "auto", marginTop: "1rem" }} onClick={handleAdvance} disabled={advancing}>
-              {advancing ? "..." : "Shutdown Complete — Finalize"}
-            </button>
-          )}
+          <button
+            className="btn btn-primary"
+            style={{ width: "auto", marginTop: "1rem" }}
+            onClick={handleAdvance}
+            disabled={advancing || !allAnswered("shutdown", shutdownItems)}
+          >
+            {advancing ? "..." : "Shutdown Complete — Finalize"}
+          </button>
         </div>
       )}
 

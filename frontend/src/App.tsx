@@ -65,7 +65,8 @@ export function App() {
   const [user, setUser] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
   const [page, setPage] = useState<Page>("dashboard");
-  const [navOpen, setNavOpen] = useState(true);
+  const isTablet = typeof window !== "undefined" && window.innerWidth <= 1024;
+  const [navOpen, setNavOpen] = useState(!isTablet);
   const [state, setState] = useState<PositionState[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [viewAt, setViewAt] = useState("");
@@ -74,6 +75,11 @@ export function App() {
   const [weeboTab, setWeeboTab] = useState<"records" | "new" | "actions" | "ask">("records");
 
   const isTimeTraveling = viewAt !== "";
+
+  function navigateTo(p: Page) {
+    setPage(p);
+    if (window.innerWidth <= 1024) setNavOpen(false);
+  }
 
   useEffect(() => {
     getMe()
@@ -188,7 +194,7 @@ export function App() {
                   <button
                     key={child.id}
                     className={`sidebar-item sub${page === child.id ? " active" : ""}`}
-                    onClick={() => setPage(child.id)}
+                    onClick={() => navigateTo(child.id)}
                   >
                     {child.label}
                   </button>
@@ -198,7 +204,7 @@ export function App() {
               <button
                 key={item.id}
                 className={`sidebar-item${page === item.id ? " active" : ""}`}
-                onClick={() => setPage(item.id)}
+                onClick={() => navigateTo(item.id)}
               >
                 {item.label}
               </button>
