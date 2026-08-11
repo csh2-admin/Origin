@@ -1522,15 +1522,15 @@ textarea {
   color: var(--text-primary);
 }
 
-.test-run-history .data-table {
+.data-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.82rem;
 }
 
-.test-run-history .data-table th {
+.data-table th {
   background: var(--neu-bg);
-  padding: 0.5rem 0.75rem;
+  padding: 0.5rem 1rem;
   text-align: left;
   font-weight: 600;
   font-size: 0.75rem;
@@ -1540,8 +1540,8 @@ textarea {
   border-bottom: 2px solid var(--border);
 }
 
-.test-run-history .data-table td {
-  padding: 0.5rem 0.75rem;
+.data-table td {
+  padding: 0.5rem 1rem;
   border-bottom: 1px solid var(--border);
   color: var(--text-primary);
 }
