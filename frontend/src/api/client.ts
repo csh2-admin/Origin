@@ -57,7 +57,7 @@ export async function getPartsCatalog(position?: string) {
 }
 
 export async function getAllUsage() {
-  return request<Record<string, { est_cycles: number; runtime_hours: number }>>("/usage", undefined, 120000);
+  return request<Record<string, { est_cycles: number; runtime_hours: number; installed_since: string | null }>>("/usage", undefined, 120000);
 }
 
 export async function getUsage(position: string) {
