@@ -5,6 +5,7 @@ import type { PositionLimit } from "../types";
 interface UsageEntry {
   est_cycles: number;
   runtime_hours: number;
+  installed_since: string | null;
 }
 
 function fmtNum(val: number | string | null | undefined, decimals = 0): string {
@@ -59,6 +60,7 @@ export function SystemDiagnostics() {
           display_name: limit?.display_name ?? position.replace(/_/g, " "),
           est_cycles: u.est_cycles,
           runtime_hours: u.runtime_hours,
+          installed_since: u.installed_since,
           limit,
           limitVal,
           pct,
@@ -100,6 +102,11 @@ export function SystemDiagnostics() {
                           ? ` (limit: ${fmtNum(a.limitVal)} cycles)`
                           : ` (limit: ${fmtNum(a.limitVal, 1)} hrs)`
                       ) : null}
+                    </span>
+                    <span className="health-detail">
+                      Last part change: {a.installed_since
+                        ? new Date(a.installed_since).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
+                        : "—"}
                     </span>
                   </div>
                   {a.pct != null ? (

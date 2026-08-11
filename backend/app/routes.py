@@ -238,11 +238,12 @@ def get_all_usage(conn):
             results[position] = {
                 "est_cycles": float(row[1]) if row and row[1] else 0,
                 "runtime_hours": float(row[0]) if row and row[0] else 0,
+                "installed_since": installed_since.isoformat() if installed_since else None,
             }
         except Exception as exc:
             logger.warning("Usage query failed for position %s: %s", position, exc)
             conn.rollback()
-            results[position] = {"est_cycles": 0, "runtime_hours": 0}
+            results[position] = {"est_cycles": 0, "runtime_hours": 0, "installed_since": installed_since.isoformat() if installed_since else None}
 
     _usage_cache = results
     _usage_cache_ts = time.time()
