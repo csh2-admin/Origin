@@ -102,9 +102,8 @@ export function SystemDiagnostics() {
                           ? ` (limit: ${fmtNum(a.limitVal)} cycles)`
                           : ` (limit: ${fmtNum(a.limitVal, 1)} hrs)`
                       ) : null}
-                    </span>
-                    <span className="health-detail">
-                      Last part change: {a.installed_since
+
+                      {" · "}Last part change: {a.installed_since
                         ? new Date(a.installed_since).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
                         : "—"}
                     </span>
