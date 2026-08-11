@@ -129,7 +129,7 @@ export function Dashboard({ onNavigate }: Props) {
 
       {/* Recent activity */}
       <div className="dash-card" style={{ marginTop: "1rem" }}>
-        <div className="dash-card-header">Recent Activity</div>
+        <div className="dash-card-header">Recent Changes to Asset Model</div>
         <div className="dash-card-body">
           {recentChanges.length === 0 ? (
             <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>No recent changes.</p>
