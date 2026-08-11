@@ -144,7 +144,9 @@ export function Dashboard({ onNavigate }: Props) {
                     const overdue = a.due_date && new Date(a.due_date) < new Date();
                     return (
                       <tr key={a.id}>
-                        <td>{a.action_text}</td>
+                        <td>
+                          <button className="link-btn" onClick={() => onNavigate("weebo:actions")}>{a.action_text}</button>
+                        </td>
                         <td>{a.responsible || "—"}</td>
                         <td>{a.status}</td>
                         <td style={{ color: overdue ? "var(--red-600)" : undefined, fontWeight: overdue ? 600 : undefined }}>

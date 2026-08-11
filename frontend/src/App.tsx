@@ -207,7 +207,10 @@ export function App() {
         </nav>
         <div className="page-content">
           {page === "dashboard" ? (
-            <Dashboard onNavigate={(p) => setPage(p as Page)} />
+            <Dashboard onNavigate={(p) => {
+              if (p === "weebo:actions") { setPage("weebo"); setWeeboTab("actions"); }
+              else setPage(p as Page);
+            }} />
           ) : page === "how-to" ? (
             <HowToPage onNavigate={(p) => setPage(p as Page)} />
           ) : page === "asset-model" ? (
