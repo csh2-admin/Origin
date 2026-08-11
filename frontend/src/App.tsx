@@ -212,7 +212,7 @@ export function App() {
             <HowToPage onNavigate={(p) => setPage(p as Page)} />
           ) : page === "asset-model" ? (
             <div className="main-layout">
-              <div className="diagram-pane">
+              <div className={`diagram-pane${activeHead === null ? " triplex-view" : ""}`}>
                 {activeHead === null ? (
                   <Triplex
                     onSelectHead={setActiveHead}
