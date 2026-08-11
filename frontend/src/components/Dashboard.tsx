@@ -39,7 +39,25 @@ export function Dashboard({ onNavigate }: Props) {
     return () => { cancelled = true; };
   }, []);
 
-  if (loading) return null;
+  if (loading) return (
+    <div className="dashboard">
+      <h2>Dashboard</h2>
+      <div className="dash-grid">
+        <div className="dash-card">
+          <div className="dash-card-header">Active Test Run</div>
+          <div className="dash-card-body">
+            <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>Loading...</p>
+          </div>
+        </div>
+      </div>
+      <div className="dash-card" style={{ marginTop: "1rem" }}>
+        <div className="dash-card-header">Recent Changes to Asset Model</div>
+        <div className="dash-card-body">
+          <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>Loading...</p>
+        </div>
+      </div>
+    </div>
+  );
   if (error || !data) return <p>{error || "Failed to load dashboard."}</p>;
 
   const recentChanges = data.recent_changes ?? [];
