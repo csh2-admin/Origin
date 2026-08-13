@@ -855,6 +855,66 @@ def get_test_report(run_id, conn):
             logger.warning("[Report] actions query failed: %s", exc)
             conn.rollback()
 
+    # Timeline events during the test window
+    timeline = []
+    if started_at:
+        test_end_ts = run.get("completed_at") or None
+        try:
+            cur.execute(
+                """
+                SELECT id, effective_time, position, installed_part_number,
+                       removed_part_number, changed_by, note,
+                       p.display_name
+                FROM change_events ce
+                JOIN positions p ON p.name = ce.position
+                WHERE ce.effective_time >= %s
+                  AND ce.effective_time <= COALESCE(%s, now())
+                ORDER BY ce.effective_time
+                """,
+                (started_at, test_end_ts),
+            )
+            for r in _dict_rows(cur):
+                sr = _serialize(r)
+                sr["event_type"] = "part_change"
+                timeline.append(sr)
+        except Exception as exc:
+            logger.warning("[Report] timeline change_events query failed: %s", exc)
+            conn.rollback()
+
+        try:
+            cur.execute(
+                """
+                SELECT id, position, caption, photo_type, taken_at, uploaded_by,
+                       p.display_name
+                FROM component_photos cp
+                JOIN positions p ON p.name = cp.position
+                WHERE cp.taken_at >= %s
+                  AND cp.taken_at <= COALESCE(%s, now())
+                ORDER BY cp.taken_at
+                """,
+                (started_at, test_end_ts),
+            )
+            for r in _dict_rows(cur):
+                sr = _serialize(r)
+                sr["event_type"] = "photo"
+                timeline.append(sr)
+        except Exception as exc:
+            logger.warning("[Report] timeline photos query failed: %s", exc)
+            conn.rollback()
+
+        for m in memos:
+            evt = dict(m)
+            evt["event_type"] = "memo"
+            timeline.append(evt)
+
+        for a in actions:
+            if a.get("created_at"):
+                evt = dict(a)
+                evt["event_type"] = "action"
+                timeline.append(evt)
+
+        timeline.sort(key=lambda e: e.get("effective_time") or e.get("taken_at") or e.get("logged_at") or e.get("created_at") or "")
+
     return jsonify({
         "run": run,
         "asset_snapshot": asset,
@@ -862,6 +922,7 @@ def get_test_report(run_id, conn):
         "procedure_steps": procedure_steps,
         "memos": memos,
         "actions": actions,
+        "timeline": timeline,
     })
 
 

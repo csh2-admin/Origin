@@ -186,9 +186,8 @@ export function Diagram({ state, selected, onSelect, onRemoveInlineDcv, readOnly
         state={state} selected={selected} onSelect={onSelect} />
 
       <Comp id="cyl_head_bolts" x={870} y={555} w={115} h={120}
-        lines={["CYL HEAD", "BOLTS"]}
+        lines={["CYL HEAD", "BOLTS", "12x"]}
         state={state} selected={selected} onSelect={onSelect} />
-      <text x={995} y={620} fontSize="11" fontWeight="600" fill="var(--text-secondary)">12x</text>
 
       <Comp id="hp_seal_group" x={380} y={580} w={170} h={90}
         lines={["HP SEAL", "GROUP"]}
