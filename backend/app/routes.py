@@ -859,27 +859,6 @@ def get_test_report(run_id, conn):
     timeline = []
     if started_at:
         test_end_ts = run.get("completed_at") or None
-        try:
-            cur.execute(
-                """
-                SELECT id, effective_time, position, installed_part_number,
-                       removed_part_number, changed_by, note,
-                       p.display_name
-                FROM change_events ce
-                JOIN positions p ON p.name = ce.position
-                WHERE ce.effective_time >= %s
-                  AND ce.effective_time <= COALESCE(%s, now())
-                ORDER BY ce.effective_time
-                """,
-                (started_at, test_end_ts),
-            )
-            for r in _dict_rows(cur):
-                sr = _serialize(r)
-                sr["event_type"] = "part_change"
-                timeline.append(sr)
-        except Exception as exc:
-            logger.warning("[Report] timeline change_events query failed: %s", exc)
-            conn.rollback()
 
         try:
             cur.execute(
@@ -1229,6 +1208,67 @@ def create_memo(conn):
         conn.commit()
 
     return jsonify(_serialize(row)), 201
+
+
+@bp.route("/voice-notes", methods=["POST"])
+@require_db
+def create_voice_note(conn):
+    import uuid
+    from flask import current_app
+
+    transcript = request.form.get("transcript", "").strip()
+    engineer = request.form.get("engineer", "")
+    if not transcript:
+        return jsonify({"detail": "Transcript is required"}), 400
+
+    audio_url = None
+    if "audio" in request.files:
+        audio_file = request.files["audio"]
+        voice_dir = os.path.join(current_app.config["UPLOAD_DIR"], "voice_notes")
+        os.makedirs(voice_dir, exist_ok=True)
+        ext = os.path.splitext(audio_file.filename or "recording.webm")[1] or ".webm"
+        filename = f"{uuid.uuid4().hex}{ext}"
+        audio_file.save(os.path.join(voice_dir, filename))
+        audio_url = f"/uploads/voice_notes/{filename}"
+
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO memo_log (
+            engineer, source_file, activity_type, summary,
+            raw_transcript, severity, audio_url
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+        RETURNING id, logged_at, engineer, source_file, summary, raw_transcript, audio_url
+        """,
+        (
+            engineer,
+            "Voice Note",
+            "Qualitative Observation",
+            transcript[:200] if len(transcript) > 200 else transcript,
+            transcript,
+            "None",
+            audio_url,
+        ),
+    )
+    row = _dict_row(cur)
+    conn.commit()
+    return jsonify(_serialize(row)), 201
+
+
+@bp.route("/voice-notes", methods=["GET"])
+@require_db
+def list_voice_notes(conn):
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT id, logged_at, engineer, summary, raw_transcript, audio_url
+        FROM memo_log
+        WHERE source_file = 'Voice Note'
+        ORDER BY logged_at DESC
+        LIMIT 100
+        """,
+    )
+    return jsonify([_serialize(r) for r in _dict_rows(cur)])
 
 
 def _parse_action_items(text):

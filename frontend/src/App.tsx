@@ -16,9 +16,10 @@ import { WeeboActions } from "./components/WeeboActions";
 import { WeeboAsk } from "./components/WeeboAsk";
 import { WeeboNewEntry } from "./components/WeeboNewEntry";
 import { WeeboRecords } from "./components/WeeboRecords";
+import { VoiceNote } from "./components/VoiceNote";
 import type { PositionState } from "./types";
 
-type Page = "dashboard" | "how-to" | "asset-model" | "assembly" | "startup" | "shutdown" | "weebo" | "run-test" | "test-history" | "diagnostics" | "dev-todo";
+type Page = "dashboard" | "how-to" | "asset-model" | "assembly" | "startup" | "shutdown" | "weebo" | "run-test" | "test-history" | "diagnostics" | "voice-note" | "dev-todo";
 
 interface NavItem {
   id: Page;
@@ -33,6 +34,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: "run-test", label: "Run Test" },
   { id: "test-history", label: "Test History" },
   { id: "diagnostics", label: "System Diagnostics" },
+  { id: "voice-note", label: "Log Voice Note" },
   { id: "weebo", label: "Weebo (BETA)" },
   {
     id: "assembly", label: "Documentation",
@@ -270,6 +272,8 @@ export function App() {
             <ProcedurePage user={user!} subPage="shutdown_procedure" label="Shut-Down Procedure" />
           ) : page === "diagnostics" ? (
             <SystemDiagnostics />
+          ) : page === "voice-note" ? (
+            <VoiceNote engineer={user!} />
           ) : page === "weebo" ? (
             <div className="weebo-page">
               <div className="weebo-tabs">

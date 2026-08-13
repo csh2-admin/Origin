@@ -221,6 +221,24 @@ export async function createMemo(fields: Record<string, unknown>) {
   });
 }
 
+export async function createVoiceNote(audio: File, transcript: string, engineer: string) {
+  const form = new FormData();
+  form.append("audio", audio);
+  form.append("transcript", transcript);
+  form.append("engineer", engineer);
+  const res = await fetch(`${BASE}/voice-notes`, {
+    method: "POST",
+    credentials: "include",
+    body: form,
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function getVoiceNotes() {
+  return request<{ id: number; logged_at: string; engineer: string; summary: string; raw_transcript: string; audio_url: string | null }[]>("/voice-notes");
+}
+
 export async function getActions(filters: Record<string, string> = {}) {
   const qs = new URLSearchParams(filters).toString();
   return request<ActionItem[]>(`/actions${qs ? `?${qs}` : ""}`);

@@ -59,8 +59,6 @@ function TimelineIcon({ type }: { type: string }) {
     fontWeight: 600, flexShrink: 0,
   };
   switch (type) {
-    case "part_change":
-      return <div style={{ ...style, background: "color-mix(in srgb, var(--accent) 15%, transparent)", color: "var(--accent)" }}>&#x2699;</div>;
     case "photo":
       return <div style={{ ...style, background: "color-mix(in srgb, var(--green-600) 15%, transparent)", color: "var(--green-600)" }}>&#x1F4F7;</div>;
     case "memo":
@@ -74,15 +72,6 @@ function TimelineIcon({ type }: { type: string }) {
 
 function timelineDescription(evt: { event_type: string; display_name?: string; installed_part_number?: string; removed_part_number?: string; changed_by?: string; note?: string; caption?: string; photo_type?: string; uploaded_by?: string; engineer?: string; summary?: string; severity?: string; action_text?: string; responsible?: string; status?: string }): { title: string; detail: string } {
   switch (evt.event_type) {
-    case "part_change": {
-      const parts: string[] = [];
-      if (evt.removed_part_number) parts.push(`removed ${evt.removed_part_number}`);
-      if (evt.installed_part_number) parts.push(`installed ${evt.installed_part_number}`);
-      return {
-        title: `Part Change — ${evt.display_name || "Unknown"}`,
-        detail: `${parts.join(", ")}${evt.changed_by ? ` by ${evt.changed_by}` : ""}${evt.note ? ` — ${evt.note}` : ""}`,
-      };
-    }
     case "photo":
       return {
         title: `Photo — ${evt.display_name || "Unknown"}`,
