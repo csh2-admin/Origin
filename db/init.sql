@@ -22,7 +22,8 @@ INSERT INTO positions (name, display_name, description) VALUES
     ('inline_dcv',     'In-Line DCV',    'In-line discharge check valve (optional)'),
     ('motor',          'Motor',          'Drive motor'),
     ('crank_drive',    'Crank Drive',    'Crank drive mechanism connecting motor to pump heads'),
-    ('press_plate',    'Cyl Head Press Plate', 'Cylinder head press plate between head block and retainer ring')
+    ('press_plate',    'Cyl Head Press Plate', 'Cylinder head press plate between head block and retainer ring'),
+    ('cyl_head_bolts', 'Cyl Head Bolts', 'Cylinder head bolts (12x)')
 ON CONFLICT (name) DO NOTHING;
 
 -- 2. Parts catalog — reference table of valid part numbers per position
@@ -54,7 +55,8 @@ INSERT INTO parts_catalog (part_number, position, description) VALUES
     ('20A112Z',    'lp_seal_group', 'Advanced EMC, v2'),
     ('20A113Z',    'lp_seal_group', 'Polymer Concepts'),
     ('20A111Z',    'lp_seal_group', 'Saint Gobain'),
-    ('20A114Z',    'lp_seal_group', 'SKF re-design')
+    ('20A114Z',    'lp_seal_group', 'SKF re-design'),
+    ('20C116Z',    'cyl_head_bolts', 'Cylinder head bolt')
 ON CONFLICT (part_number, position) DO NOTHING;
 
 -- 3. Append-only change event log

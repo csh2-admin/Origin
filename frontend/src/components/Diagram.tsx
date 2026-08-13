@@ -21,6 +21,7 @@ const COMP_BOUNDS: Record<string, { x: number; y: number; w: number; h: number }
   head_block:     { x: 620, y: 425, w: 115, h: 120 },
   press_plate:    { x: 745, y: 425, w: 115, h: 120 },
   retaining_ring: { x: 870, y: 425, w: 115, h: 120 },
+  cyl_head_bolts: { x: 870, y: 555, w: 115, h: 120 },
   hp_seal_group:  { x: 380, y: 580, w: 170, h: 90 },
   motor:          { x: 50,  y: 170, w: 960, h: 540 },
   crank_drive:    { x: 50,  y: 170, w: 960, h: 540 },
@@ -183,6 +184,11 @@ export function Diagram({ state, selected, onSelect, onRemoveInlineDcv, readOnly
       <Comp id="retaining_ring" x={870} y={425} w={115} h={120}
         lines={["RETAINER", "RING"]}
         state={state} selected={selected} onSelect={onSelect} />
+
+      <Comp id="cyl_head_bolts" x={870} y={555} w={115} h={120}
+        lines={["CYL HEAD", "BOLTS"]}
+        state={state} selected={selected} onSelect={onSelect} />
+      <text x={995} y={620} fontSize="11" fontWeight="600" fill="var(--text-secondary)">12x</text>
 
       <Comp id="hp_seal_group" x={380} y={580} w={170} h={90}
         lines={["HP SEAL", "GROUP"]}
