@@ -1057,45 +1057,57 @@ def transcribe_audio(conn):
     media_type = (f.content_type or "audio/webm").split(";")[0].strip()
     try:
         import base64
-        import httpx
+        import subprocess
+        import tempfile
         api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
         if not api_key:
             return jsonify({"detail": "ANTHROPIC_API_KEY not configured"}), 500
         audio_b64 = base64.b64encode(audio_bytes).decode("ascii")
-        resp = httpx.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "x-api-key": api_key,
-                "anthropic-version": "2023-06-01",
-                "content-type": "application/json",
-            },
-            content=json.dumps({
-                "model": "claude-sonnet-4-6",
-                "max_tokens": 4096,
-                "messages": [{
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "audio",
-                            "source": {
-                                "type": "base64",
-                                "media_type": media_type,
-                                "data": audio_b64,
-                            },
+        payload = json.dumps({
+            "model": "claude-sonnet-4-6",
+            "max_tokens": 4096,
+            "messages": [{
+                "role": "user",
+                "content": [
+                    {
+                        "type": "audio",
+                        "source": {
+                            "type": "base64",
+                            "media_type": media_type,
+                            "data": audio_b64,
                         },
-                        {
-                            "type": "text",
-                            "text": "Transcribe the audio above verbatim. Return ONLY the transcription text, nothing else.",
-                        },
-                    ],
-                }],
-            }).encode("utf-8"),
-            timeout=120.0,
-        )
-        if resp.status_code != 200:
-            logger.error("Transcription API error %s: %s", resp.status_code, resp.text)
-            return jsonify({"detail": f"Transcription API error: {resp.text}"}), 500
-        data = resp.json()
+                    },
+                    {
+                        "type": "text",
+                        "text": "Transcribe the audio above verbatim. Return ONLY the transcription text, nothing else.",
+                    },
+                ],
+            }],
+        })
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False, encoding="utf-8") as tmp:
+            tmp.write(payload)
+            tmp_path = tmp.name
+        try:
+            result = subprocess.run(
+                [
+                    "curl", "-s", "-X", "POST",
+                    "https://api.anthropic.com/v1/messages",
+                    "-H", f"x-api-key: {api_key}",
+                    "-H", "anthropic-version: 2023-06-01",
+                    "-H", "content-type: application/json",
+                    "-d", f"@{tmp_path}",
+                ],
+                capture_output=True, text=True, timeout=120,
+            )
+        finally:
+            os.unlink(tmp_path)
+        if result.returncode != 0:
+            logger.error("curl failed: %s", result.stderr)
+            return jsonify({"detail": f"Transcription request failed: {result.stderr}"}), 500
+        data = json.loads(result.stdout)
+        if "error" in data:
+            logger.error("Transcription API error: %s", data["error"])
+            return jsonify({"detail": f"Transcription API error: {data['error']['message']}"}), 500
         transcript = data["content"][0]["text"].strip()
         return jsonify({"transcript": transcript})
     except Exception as e:
