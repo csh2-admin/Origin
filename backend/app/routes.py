@@ -1056,32 +1056,43 @@ def transcribe_audio(conn):
     audio_bytes = f.read()
     media_type = f.content_type or "audio/webm"
     try:
-        import anthropic
         import base64
-        client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
-        audio_b64 = base64.standard_b64encode(audio_bytes).decode("utf-8")
-        message = client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=4096,
-            messages=[{
-                "role": "user",
-                "content": [
-                    {
-                        "type": "audio",
-                        "source": {
-                            "type": "base64",
-                            "media_type": media_type,
-                            "data": audio_b64,
+        import httpx
+        api_key = os.environ.get("ANTHROPIC_API_KEY")
+        audio_b64 = base64.standard_b64encode(audio_bytes).decode("ascii")
+        resp = httpx.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json",
+            },
+            json={
+                "model": "claude-sonnet-4-6",
+                "max_tokens": 4096,
+                "messages": [{
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "audio",
+                            "source": {
+                                "type": "base64",
+                                "media_type": media_type,
+                                "data": audio_b64,
+                            },
                         },
-                    },
-                    {
-                        "type": "text",
-                        "text": "Transcribe the audio above verbatim. Return ONLY the transcription text, nothing else — no preamble, no quotes, no labels.",
-                    },
-                ],
-            }],
+                        {
+                            "type": "text",
+                            "text": "Transcribe the audio above verbatim. Return ONLY the transcription text, nothing else — no preamble, no quotes, no labels.",
+                        },
+                    ],
+                }],
+            },
+            timeout=120.0,
         )
-        transcript = message.content[0].text.strip()
+        resp.raise_for_status()
+        data = resp.json()
+        transcript = data["content"][0]["text"].strip()
         return jsonify({"transcript": transcript})
     except Exception as e:
         logger.error("Transcription failed: %s", e)
