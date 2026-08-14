@@ -1053,19 +1053,38 @@ def transcribe_audio(conn):
     if "file" not in request.files:
         return jsonify({"detail": "No audio file provided"}), 400
     f = request.files["file"]
-    suffix = os.path.splitext(f.filename or ".wav")[1] or ".wav"
     audio_bytes = f.read()
+    media_type = f.content_type or "audio/webm"
     try:
-        import whisper
-        model = whisper.load_model("base")
-        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-            tmp.write(audio_bytes)
-            tmp_path = tmp.name
-        result = model.transcribe(tmp_path, fp16=False)
-        transcript = result["text"].strip()
-        os.unlink(tmp_path)
+        import anthropic
+        import base64
+        client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+        audio_b64 = base64.standard_b64encode(audio_bytes).decode("utf-8")
+        message = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=4096,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {
+                        "type": "audio",
+                        "source": {
+                            "type": "base64",
+                            "media_type": media_type,
+                            "data": audio_b64,
+                        },
+                    },
+                    {
+                        "type": "text",
+                        "text": "Transcribe the audio above verbatim. Return ONLY the transcription text, nothing else — no preamble, no quotes, no labels.",
+                    },
+                ],
+            }],
+        )
+        transcript = message.content[0].text.strip()
         return jsonify({"transcript": transcript})
     except Exception as e:
+        logger.error("Transcription failed: %s", e)
         return jsonify({"detail": str(e)}), 500
 
 
