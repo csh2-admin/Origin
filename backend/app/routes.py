@@ -1100,7 +1100,8 @@ def transcribe_audio(conn):
         logger.error("Transcription API error %s: %s", e.code, body)
         return jsonify({"detail": f"Transcription API error: {body}"}), 500
     except Exception as e:
-        logger.error("Transcription failed: %s", e)
+        import traceback
+        logger.error("Transcription failed: %s\n%s", e, traceback.format_exc())
         return jsonify({"detail": str(e)}), 500
 
 
