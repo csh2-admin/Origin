@@ -27,6 +27,7 @@ export function VoiceNote({ engineer }: { engineer: string }) {
   const [notes, setNotes] = useState<FieldNoteEntry[]>([]);
   const [loadingNotes, setLoadingNotes] = useState(true);
   const fileInput = useRef<HTMLInputElement>(null);
+  const cameraInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     getFieldNotes()
@@ -47,6 +48,7 @@ export function VoiceNote({ engineer }: { engineer: string }) {
     setPhoto(null);
     setPhotoPreview(null);
     if (fileInput.current) fileInput.current.value = "";
+    if (cameraInput.current) cameraInput.current.value = "";
   }
 
   async function handleSave() {
@@ -74,31 +76,31 @@ export function VoiceNote({ engineer }: { engineer: string }) {
   }
 
   return (
-    <div style={{ padding: "1.5rem", maxWidth: 800, margin: "0 auto" }}>
+    <div className="field-notes-page">
       <h2>Field Notes</h2>
-      <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem", marginBottom: "1.5rem" }}>
+      <p className="field-notes-subtitle">
         Log observations, notes, and photos from the field.
       </p>
 
       {error && <div className="wne-error">{error}</div>}
       {saved && (
-        <div style={{ background: "color-mix(in srgb, var(--green-600) 10%, transparent)", border: "1px solid var(--green-600)", borderRadius: "var(--radius)", padding: "0.75rem 1rem", marginBottom: "1rem", fontSize: "0.85rem", color: "var(--green-600)" }}>
+        <div className="field-notes-success">
           Note saved successfully.
         </div>
       )}
 
-      <div className="dash-card" style={{ marginBottom: "1.5rem" }}>
+      <div className="dash-card field-notes-input-card">
         <div className="dash-card-header">New Note</div>
         <div className="dash-card-body">
           <textarea
-            rows={5}
+            rows={4}
             value={note}
             onChange={(e) => { setNote(e.target.value); setSaved(false); }}
             placeholder="Type your observation or note here..."
-            style={{ width: "100%", fontFamily: "inherit", fontSize: "0.85rem", padding: "0.5rem", borderRadius: "var(--radius)", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", resize: "vertical" }}
+            className="field-notes-textarea"
           />
 
-          <div style={{ marginTop: "0.75rem" }}>
+          <div className="field-notes-photo-section">
             <input
               ref={fileInput}
               type="file"
@@ -106,25 +108,36 @@ export function VoiceNote({ engineer }: { engineer: string }) {
               onChange={handlePhotoSelect}
               style={{ display: "none" }}
             />
+            <input
+              ref={cameraInput}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handlePhotoSelect}
+              style={{ display: "none" }}
+            />
             {!photo ? (
-              <button
-                className="btn btn-secondary"
-                style={{ width: "auto", fontSize: "0.8rem" }}
-                onClick={() => fileInput.current?.click()}
-              >
-                + Attach Photo
-              </button>
+              <div className="field-notes-photo-buttons">
+                <button
+                  className="btn btn-secondary field-notes-photo-btn"
+                  onClick={() => cameraInput.current?.click()}
+                >
+                  Take Photo
+                </button>
+                <button
+                  className="btn btn-secondary field-notes-photo-btn"
+                  onClick={() => fileInput.current?.click()}
+                >
+                  Upload Photo
+                </button>
+              </div>
             ) : (
-              <div style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem" }}>
+              <div className="field-notes-photo-preview">
                 {photoPreview && (
-                  <img
-                    src={photoPreview}
-                    alt="Preview"
-                    style={{ width: 120, height: 90, objectFit: "cover", borderRadius: "var(--radius)", border: "1px solid var(--border)" }}
-                  />
+                  <img src={photoPreview} alt="Preview" className="field-notes-preview-img" />
                 )}
                 <div>
-                  <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>{photo.name}</div>
+                  <div className="field-notes-photo-name">{photo.name}</div>
                   <button
                     className="btn btn-secondary"
                     style={{ width: "auto", fontSize: "0.75rem", marginTop: "0.25rem", padding: "0.2rem 0.5rem" }}
@@ -137,11 +150,11 @@ export function VoiceNote({ engineer }: { engineer: string }) {
             )}
           </div>
 
-          <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.75rem" }}>
-            <button className="btn btn-primary" style={{ width: "auto" }} onClick={handleSave} disabled={saving || !note.trim()}>
+          <div className="field-notes-actions">
+            <button className="btn btn-primary field-notes-save-btn" onClick={handleSave} disabled={saving || !note.trim()}>
               {saving ? "Saving..." : "Save Note"}
             </button>
-            <button className="btn btn-secondary" style={{ width: "auto" }} onClick={handleDiscard} disabled={saving}>
+            <button className="btn btn-secondary field-notes-discard-btn" onClick={handleDiscard} disabled={saving}>
               Discard
             </button>
           </div>
@@ -152,23 +165,23 @@ export function VoiceNote({ engineer }: { engineer: string }) {
         <div className="dash-card-header">Note Log</div>
         <div className="dash-card-body">
           {loadingNotes ? (
-            <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>Loading...</p>
+            <p className="field-notes-empty">Loading...</p>
           ) : notes.length === 0 ? (
-            <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>No notes recorded yet.</p>
+            <p className="field-notes-empty">No notes recorded yet.</p>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+            <div className="field-notes-log">
               {notes.map((n) => (
-                <div key={n.id} style={{ borderBottom: "1px solid var(--border)", paddingBottom: "0.75rem" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.25rem" }}>
-                    <strong style={{ fontSize: "0.85rem" }}>{n.engineer}</strong>
-                    <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>{fmtTime(n.logged_at)}</span>
+                <div key={n.id} className="field-notes-entry">
+                  <div className="field-notes-entry-header">
+                    <strong>{n.engineer}</strong>
+                    <span className="field-notes-entry-time">{fmtTime(n.logged_at)}</span>
                   </div>
-                  <p style={{ fontSize: "0.85rem", color: "var(--text)", margin: "0.25rem 0", whiteSpace: "pre-wrap" }}>{n.raw_transcript}</p>
+                  <p className="field-notes-entry-text">{n.raw_transcript}</p>
                   {n.audio_url && (
                     <img
                       src={n.audio_url}
                       alt="Attached photo"
-                      style={{ maxWidth: 300, maxHeight: 200, objectFit: "contain", borderRadius: "var(--radius)", border: "1px solid var(--border)", marginTop: "0.25rem", cursor: "pointer" }}
+                      className="field-notes-entry-photo"
                       onClick={() => window.open(n.audio_url!, "_blank")}
                     />
                   )}
