@@ -1054,46 +1054,51 @@ def transcribe_audio(conn):
         return jsonify({"detail": "No audio file provided"}), 400
     f = request.files["file"]
     audio_bytes = f.read()
-    media_type = f.content_type or "audio/webm"
+    media_type = (f.content_type or "audio/webm").split(";")[0].strip()
     try:
         import base64
-        import httpx
+        import urllib.request
         api_key = os.environ.get("ANTHROPIC_API_KEY")
-        audio_b64 = base64.standard_b64encode(audio_bytes).decode("ascii")
-        resp = httpx.post(
+        audio_b64 = base64.b64encode(audio_bytes).decode("ascii")
+        payload = json.dumps({
+            "model": "claude-sonnet-4-6",
+            "max_tokens": 4096,
+            "messages": [{
+                "role": "user",
+                "content": [
+                    {
+                        "type": "audio",
+                        "source": {
+                            "type": "base64",
+                            "media_type": media_type,
+                            "data": audio_b64,
+                        },
+                    },
+                    {
+                        "type": "text",
+                        "text": "Transcribe the audio above verbatim. Return ONLY the transcription text, nothing else.",
+                    },
+                ],
+            }],
+        }).encode("utf-8")
+        req = urllib.request.Request(
             "https://api.anthropic.com/v1/messages",
+            data=payload,
             headers={
                 "x-api-key": api_key,
                 "anthropic-version": "2023-06-01",
-                "content-type": "application/json",
+                "Content-Type": "application/json",
             },
-            json={
-                "model": "claude-sonnet-4-6",
-                "max_tokens": 4096,
-                "messages": [{
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "audio",
-                            "source": {
-                                "type": "base64",
-                                "media_type": media_type,
-                                "data": audio_b64,
-                            },
-                        },
-                        {
-                            "type": "text",
-                            "text": "Transcribe the audio above verbatim. Return ONLY the transcription text, nothing else — no preamble, no quotes, no labels.",
-                        },
-                    ],
-                }],
-            },
-            timeout=120.0,
+            method="POST",
         )
-        resp.raise_for_status()
-        data = resp.json()
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
         transcript = data["content"][0]["text"].strip()
         return jsonify({"transcript": transcript})
+    except urllib.request.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")
+        logger.error("Transcription API error %s: %s", e.code, body)
+        return jsonify({"detail": f"Transcription API error: {body}"}), 500
     except Exception as e:
         logger.error("Transcription failed: %s", e)
         return jsonify({"detail": str(e)}), 500
