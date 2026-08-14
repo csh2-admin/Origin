@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { createMemo, extractInsights, transcribeAudio } from "../api/client";
+import { createMemo, extractInsights } from "../api/client";
 
 const ACTIVITY_TYPES = [
   "Action Item",
@@ -90,18 +90,9 @@ export function WeeboNewEntry({ engineer, onSaved }: { engineer: string; onSaved
     setRecording(false);
   }
 
-  async function handleTranscribe() {
+  function handleTranscribe() {
     if (!file) return;
-    setProcessing(true);
-    setError("");
-    try {
-      const result = await transcribeAudio(file);
-      setTranscript(result.transcript);
-      setStep(2);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Transcription failed");
-    }
-    setProcessing(false);
+    setStep(2);
   }
 
   async function handleExtract() {
@@ -178,7 +169,7 @@ export function WeeboNewEntry({ engineer, onSaved }: { engineer: string; onSaved
       {/* Step 1: Audio */}
       <div className="wne-card" style={{ display: step === 1 ? undefined : "none" }}>
         <h3>Record or Upload Audio</h3>
-        <p>Record a voice log directly, or upload an existing audio file.</p>
+        <p>Record a voice log directly, or upload an existing audio file. Transcribe externally, then paste in the next step.</p>
 
         <div className="wne-record-section">
           {recording ? (
@@ -219,9 +210,9 @@ export function WeeboNewEntry({ engineer, onSaved }: { engineer: string; onSaved
             className="btn btn-primary"
             style={{ width: "auto" }}
             onClick={handleTranscribe}
-            disabled={!file || processing || recording}
+            disabled={!file || recording}
           >
-            {processing ? "Transcribing..." : "Transcribe"}
+            Continue
           </button>
           <button
             className="btn btn-secondary"

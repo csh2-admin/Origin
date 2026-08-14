@@ -175,25 +175,6 @@ export async function getEngineers() {
   return request<string[]>("/memos/engineers");
 }
 
-export async function transcribeAudio(file: File) {
-  const form = new FormData();
-  form.append("file", file);
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 120000);
-  const res = await fetch(`${BASE}/memos/transcribe`, {
-    method: "POST",
-    credentials: "include",
-    signal: controller.signal,
-    body: form,
-  });
-  clearTimeout(timeout);
-  if (res.status === 401) throw new Error("UNAUTHORIZED");
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || res.statusText);
-  }
-  return res.json() as Promise<{ transcript: string }>;
-}
 
 export async function extractInsights(transcript: string) {
   const controller = new AbortController();
@@ -221,12 +202,12 @@ export async function createMemo(fields: Record<string, unknown>) {
   });
 }
 
-export async function createVoiceNote(audio: File, transcript: string, engineer: string) {
+export async function createFieldNote(note: string, engineer: string, photo?: File) {
   const form = new FormData();
-  form.append("audio", audio);
-  form.append("transcript", transcript);
+  form.append("note", note);
   form.append("engineer", engineer);
-  const res = await fetch(`${BASE}/voice-notes`, {
+  if (photo) form.append("photo", photo);
+  const res = await fetch(`${BASE}/field-notes`, {
     method: "POST",
     credentials: "include",
     body: form,
@@ -235,8 +216,8 @@ export async function createVoiceNote(audio: File, transcript: string, engineer:
   return res.json();
 }
 
-export async function getVoiceNotes() {
-  return request<{ id: number; logged_at: string; engineer: string; summary: string; raw_transcript: string; audio_url: string | null }[]>("/voice-notes");
+export async function getFieldNotes() {
+  return request<{ id: number; logged_at: string; engineer: string; summary: string; raw_transcript: string; audio_url: string | null }[]>("/field-notes");
 }
 
 export async function getActions(filters: Record<string, string> = {}) {

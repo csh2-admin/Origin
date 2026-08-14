@@ -1047,74 +1047,6 @@ def list_engineers(conn):
     return jsonify([r[0] for r in cur.fetchall()])
 
 
-@bp.route("/memos/transcribe", methods=["POST"])
-@require_db
-def transcribe_audio(conn):
-    if "file" not in request.files:
-        return jsonify({"detail": "No audio file provided"}), 400
-    f = request.files["file"]
-    audio_bytes = f.read()
-    media_type = (f.content_type or "audio/webm").split(";")[0].strip()
-    try:
-        import base64
-        import subprocess
-        import tempfile
-        api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
-        if not api_key:
-            return jsonify({"detail": "ANTHROPIC_API_KEY not configured"}), 500
-        audio_b64 = base64.b64encode(audio_bytes).decode("ascii")
-        payload = json.dumps({
-            "model": "claude-sonnet-4-6",
-            "max_tokens": 4096,
-            "messages": [{
-                "role": "user",
-                "content": [
-                    {
-                        "type": "audio",
-                        "source": {
-                            "type": "base64",
-                            "media_type": media_type,
-                            "data": audio_b64,
-                        },
-                    },
-                    {
-                        "type": "text",
-                        "text": "Transcribe the audio above verbatim. Return ONLY the transcription text, nothing else.",
-                    },
-                ],
-            }],
-        })
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False, encoding="utf-8") as tmp:
-            tmp.write(payload)
-            tmp_path = tmp.name
-        try:
-            result = subprocess.run(
-                [
-                    "curl", "-s", "-X", "POST",
-                    "https://api.anthropic.com/v1/messages",
-                    "-H", f"x-api-key: {api_key}",
-                    "-H", "anthropic-version: 2023-06-01",
-                    "-H", "content-type: application/json",
-                    "-d", f"@{tmp_path}",
-                ],
-                capture_output=True, text=True, timeout=120,
-            )
-        finally:
-            os.unlink(tmp_path)
-        if result.returncode != 0:
-            logger.error("curl failed: %s", result.stderr)
-            return jsonify({"detail": f"Transcription request failed: {result.stderr}"}), 500
-        data = json.loads(result.stdout)
-        if "error" in data:
-            logger.error("Transcription API error: %s", data["error"])
-            return jsonify({"detail": f"Transcription API error: {data['error']['message']}"}), 500
-        transcript = data["content"][0]["text"].strip()
-        return jsonify({"transcript": transcript})
-    except Exception as e:
-        import traceback
-        logger.error("Transcription failed: %s\n%s", e, traceback.format_exc())
-        return jsonify({"detail": str(e)}), 500
-
 
 PRODUCT_DESCRIPTION = (
     "a hardware product under test; entries describe daily system performance "
@@ -1257,26 +1189,26 @@ def create_memo(conn):
     return jsonify(_serialize(row)), 201
 
 
-@bp.route("/voice-notes", methods=["POST"])
+@bp.route("/field-notes", methods=["POST"])
 @require_db
-def create_voice_note(conn):
+def create_field_note(conn):
     import uuid
     from flask import current_app
 
-    transcript = request.form.get("transcript", "").strip()
+    note = request.form.get("note", "").strip()
     engineer = request.form.get("engineer", "")
-    if not transcript:
-        return jsonify({"detail": "Transcript is required"}), 400
+    if not note:
+        return jsonify({"detail": "Note text is required"}), 400
 
-    audio_url = None
-    if "audio" in request.files:
-        audio_file = request.files["audio"]
-        voice_dir = os.path.join(current_app.config["UPLOAD_DIR"], "voice_notes")
-        os.makedirs(voice_dir, exist_ok=True)
-        ext = os.path.splitext(audio_file.filename or "recording.webm")[1] or ".webm"
+    photo_url = None
+    if "photo" in request.files:
+        photo_file = request.files["photo"]
+        note_dir = os.path.join(current_app.config["UPLOAD_DIR"], "field_notes")
+        os.makedirs(note_dir, exist_ok=True)
+        ext = os.path.splitext(photo_file.filename or "photo.jpg")[1] or ".jpg"
         filename = f"{uuid.uuid4().hex}{ext}"
-        audio_file.save(os.path.join(voice_dir, filename))
-        audio_url = f"/uploads/voice_notes/{filename}"
+        photo_file.save(os.path.join(note_dir, filename))
+        photo_url = f"/uploads/field_notes/{filename}"
 
     cur = conn.cursor()
     cur.execute(
@@ -1289,12 +1221,12 @@ def create_voice_note(conn):
         """,
         (
             engineer,
-            "Voice Note",
+            "Field Note",
             "Qualitative Observation",
-            transcript[:200] if len(transcript) > 200 else transcript,
-            transcript,
+            note[:200] if len(note) > 200 else note,
+            note,
             "None",
-            audio_url,
+            photo_url,
         ),
     )
     row = _dict_row(cur)
@@ -1302,15 +1234,15 @@ def create_voice_note(conn):
     return jsonify(_serialize(row)), 201
 
 
-@bp.route("/voice-notes", methods=["GET"])
+@bp.route("/field-notes", methods=["GET"])
 @require_db
-def list_voice_notes(conn):
+def list_field_notes(conn):
     cur = conn.cursor()
     cur.execute(
         """
         SELECT id, logged_at, engineer, summary, raw_transcript, audio_url
         FROM memo_log
-        WHERE source_file = 'Voice Note'
+        WHERE source_file IN ('Field Note', 'Voice Note')
         ORDER BY logged_at DESC
         LIMIT 100
         """,

@@ -34,7 +34,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: "run-test", label: "Run Test" },
   { id: "test-history", label: "Test History" },
   { id: "diagnostics", label: "System Diagnostics" },
-  { id: "voice-note", label: "Log Voice Note" },
+  { id: "voice-note", label: "Field Notes" },
   { id: "weebo", label: "Weebo (BETA)" },
   {
     id: "assembly", label: "Documentation",
