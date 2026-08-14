@@ -1058,8 +1058,7 @@ def transcribe_audio(conn):
     try:
         import base64
         import httpx
-        raw_key = os.environ.get("ANTHROPIC_API_KEY", "")
-        api_key = raw_key.strip().encode("ascii", errors="ignore").decode("ascii")
+        api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
         if not api_key:
             return jsonify({"detail": "ANTHROPIC_API_KEY not configured"}), 500
         audio_b64 = base64.b64encode(audio_bytes).decode("ascii")
