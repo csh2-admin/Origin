@@ -1217,12 +1217,12 @@ def create_field_note(conn):
             engineer, source_file, activity_type, summary,
             raw_transcript, severity, audio_url
         ) VALUES (%s, %s, %s, %s, %s, %s, %s)
-        RETURNING id, logged_at, engineer, source_file, summary, raw_transcript, audio_url
+        RETURNING id, logged_at, engineer, source_file, activity_type, summary, raw_transcript, audio_url
         """,
         (
             engineer,
             "Field Note",
-            "Qualitative Observation",
+            "Unprocessed",
             note[:200] if len(note) > 200 else note,
             note,
             "None",
@@ -1240,7 +1240,7 @@ def list_field_notes(conn):
     cur = conn.cursor()
     cur.execute(
         """
-        SELECT id, logged_at, engineer, summary, raw_transcript, audio_url
+        SELECT id, logged_at, engineer, activity_type, summary, raw_transcript, audio_url
         FROM memo_log
         WHERE source_file IN ('Field Note', 'Voice Note')
         ORDER BY logged_at DESC
@@ -1248,6 +1248,85 @@ def list_field_notes(conn):
         """,
     )
     return jsonify([_serialize(r) for r in _dict_rows(cur)])
+
+
+@bp.route("/field-notes/<int:note_id>", methods=["PUT"])
+@require_db
+def update_field_note(conn, note_id):
+    import uuid
+    from flask import current_app
+
+    data = None
+    if request.content_type and "multipart/form-data" in request.content_type:
+        note_text = request.form.get("note")
+        category = request.form.get("category")
+    else:
+        data = request.get_json(silent=True) or {}
+        note_text = data.get("note")
+        category = data.get("category")
+
+    updates = []
+    params = []
+
+    if note_text is not None:
+        updates.append("raw_transcript = %s")
+        params.append(note_text)
+        updates.append("summary = %s")
+        params.append(note_text[:200] if len(note_text) > 200 else note_text)
+
+    if category is not None:
+        updates.append("activity_type = %s")
+        params.append(category)
+
+    if "photo" in request.files:
+        photo_file = request.files["photo"]
+        note_dir = os.path.join(current_app.config["UPLOAD_DIR"], "field_notes")
+        os.makedirs(note_dir, exist_ok=True)
+        ext = os.path.splitext(photo_file.filename or "photo.jpg")[1] or ".jpg"
+        filename = f"{uuid.uuid4().hex}{ext}"
+        photo_file.save(os.path.join(note_dir, filename))
+        updates.append("audio_url = %s")
+        params.append(f"/uploads/field_notes/{filename}")
+
+    remove_photo = False
+    if request.content_type and "multipart/form-data" in request.content_type:
+        remove_photo = request.form.get("remove_photo") == "true"
+    elif data:
+        remove_photo = data.get("remove_photo", False)
+
+    if remove_photo:
+        updates.append("audio_url = NULL")
+
+    if not updates:
+        return jsonify({"detail": "No fields to update"}), 400
+
+    params.append(note_id)
+    cur = conn.cursor()
+    cur.execute(
+        f"""
+        UPDATE memo_log SET {', '.join(updates)}
+        WHERE id = %s
+        RETURNING id, logged_at, engineer, activity_type, summary, raw_transcript, audio_url
+        """,
+        params,
+    )
+    row = _dict_row(cur)
+    if not row:
+        return jsonify({"detail": "Note not found"}), 404
+    conn.commit()
+    return jsonify(_serialize(row))
+
+
+@bp.route("/field-notes/<int:note_id>", methods=["DELETE"])
+@require_db
+def delete_field_note(conn, note_id):
+    cur = conn.cursor()
+    cur.execute("DELETE FROM memo_log WHERE id = %s RETURNING id", (note_id,))
+    row = _dict_row(cur)
+    if not row:
+        return jsonify({"detail": "Note not found"}), 404
+    conn.commit()
+    return jsonify({"ok": True})
 
 
 def _parse_action_items(text):

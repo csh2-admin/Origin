@@ -202,6 +202,16 @@ export async function createMemo(fields: Record<string, unknown>) {
   });
 }
 
+export interface FieldNote {
+  id: number;
+  logged_at: string;
+  engineer: string;
+  activity_type: string;
+  summary: string;
+  raw_transcript: string;
+  audio_url: string | null;
+}
+
 export async function createFieldNote(note: string, engineer: string, photo?: File) {
   const form = new FormData();
   form.append("note", note);
@@ -213,11 +223,36 @@ export async function createFieldNote(note: string, engineer: string, photo?: Fi
     body: form,
   });
   if (!res.ok) throw new Error(await res.text());
-  return res.json();
+  return res.json() as Promise<FieldNote>;
 }
 
 export async function getFieldNotes() {
-  return request<{ id: number; logged_at: string; engineer: string; summary: string; raw_transcript: string; audio_url: string | null }[]>("/field-notes");
+  return request<FieldNote[]>("/field-notes");
+}
+
+export async function updateFieldNote(id: number, updates: { note?: string; category?: string; remove_photo?: boolean }, photo?: File) {
+  if (photo || updates.remove_photo) {
+    const form = new FormData();
+    if (updates.note !== undefined) form.append("note", updates.note);
+    if (updates.category !== undefined) form.append("category", updates.category);
+    if (updates.remove_photo) form.append("remove_photo", "true");
+    if (photo) form.append("photo", photo);
+    const res = await fetch(`${BASE}/field-notes/${id}`, {
+      method: "PUT",
+      credentials: "include",
+      body: form,
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json() as Promise<FieldNote>;
+  }
+  return request<FieldNote>(`/field-notes/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(updates),
+  });
+}
+
+export async function deleteFieldNote(id: number) {
+  return request<{ ok: boolean }>(`/field-notes/${id}`, { method: "DELETE" });
 }
 
 export async function getActions(filters: Record<string, string> = {}) {
