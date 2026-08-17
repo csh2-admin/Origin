@@ -1323,8 +1323,8 @@ def update_field_note(conn, note_id):
         if action_text:
             cur.execute(
                 """
-                INSERT INTO action_items (engineer, action_text, status, responsible, memo_id)
-                VALUES (%s, %s, %s, %s, %s)
+                INSERT INTO action_items (engineer, action_text, status, responsible, memo_id, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, NOW(), NOW())
                 RETURNING id
                 """,
                 (
