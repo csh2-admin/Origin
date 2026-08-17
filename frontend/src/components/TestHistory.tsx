@@ -328,35 +328,6 @@ export function TestHistory() {
           } catch { return null; }
         })()}
 
-        {/* Open actions */}
-        {report.actions?.length > 0 && (
-          <>
-            <h2>Open Actions</h2>
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Action</th>
-                  <th>Responsible</th>
-                  <th>Status</th>
-                  <th>Due Date</th>
-                  <th>Notes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {report.actions.map((a) => (
-                  <tr key={a.id}>
-                    <td>{a.action_text}</td>
-                    <td>{a.responsible || "—"}</td>
-                    <td>{a.status || "open"}</td>
-                    <td>{a.due_date ? fmtDate(a.due_date) : "—"}</td>
-                    <td style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis" }}>{a.notes || "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </>
-        )}
-
         {/* Weebo memos from that day */}
         {report.memos.length > 0 && (
           <>

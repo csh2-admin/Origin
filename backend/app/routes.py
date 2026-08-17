@@ -1319,20 +1319,24 @@ def update_field_note(conn, note_id):
         return jsonify({"detail": "Note not found"}), 404
 
     if category == "Action Item":
-        note_text_for_action = note_text if note_text is not None else row.get("raw_transcript", "")
-        cur.execute(
-            """
-            INSERT INTO action_items (engineer, action_text, status, responsible, memo_id)
-            VALUES (%s, %s, %s, %s, %s)
-            """,
-            (
-                row.get("engineer", ""),
-                note_text_for_action,
-                "Not Started",
-                row.get("engineer", ""),
-                note_id,
-            ),
-        )
+        action_text = note_text if note_text is not None else (row.get("raw_transcript") or row.get("summary") or "")
+        if action_text:
+            cur.execute(
+                """
+                INSERT INTO action_items (engineer, action_text, status, responsible, memo_id)
+                VALUES (%s, %s, %s, %s, %s)
+                RETURNING id
+                """,
+                (
+                    row.get("engineer", ""),
+                    action_text,
+                    "Not Started",
+                    row.get("engineer", ""),
+                    note_id,
+                ),
+            )
+            action_row = cur.fetchone()
+            logger.info("Created action_item id=%s from field note %s", action_row[0] if action_row else None, note_id)
 
     conn.commit()
     return jsonify(_serialize(row))
