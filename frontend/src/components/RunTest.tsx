@@ -8,7 +8,6 @@ import {
   getTestRunHistory,
   startTestRun,
   updateChecklist,
-  updateNotes,
   verifyAssembly,
 } from "../api/client";
 import type { AssemblyInstruction, AssemblyRun, AssemblyVerification, TestRun } from "../types";
@@ -78,7 +77,6 @@ export function RunTest({ onNavigate }: Props) {
   const [checklist, setChecklist] = useState<Record<string, string>>({});
   const [advancing, setAdvancing] = useState(false);
   const [testType, setTestType] = useState<"simplex" | "triplex" | null>(null);
-  const [notes, setNotes] = useState("");
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [assemblyRuns, setAssemblyRuns] = useState<Record<string, AssemblyRun[]>>({});
   const [assemblyChoice, setAssemblyChoice] = useState<Record<string, "new" | number>>({});
@@ -91,7 +89,6 @@ export function RunTest({ onNavigate }: Props) {
       setRun(r);
       if (r) {
         setChecklist(parseChecklist(r));
-        setNotes(r.notes ?? "");
       }
     } catch { /* auth handled elsewhere */ }
     setLoading(false);
@@ -155,7 +152,6 @@ export function RunTest({ onNavigate }: Props) {
       setRun(null);
       setChecklist({});
       setVerification(null);
-      setNotes("");
       setTestType(null);
       loadHistory();
     } catch (err) {
@@ -192,7 +188,6 @@ export function RunTest({ onNavigate }: Props) {
   async function setItemValue(key: string, value: string) {
     if (!run) return;
     const next = { ...checklist, [key]: value };
-    if (value === "yes") delete next[`${key}_notes`];
     setChecklist(next);
     try {
       await updateChecklist(run.id, next);
@@ -212,21 +207,10 @@ export function RunTest({ onNavigate }: Props) {
   function allAnswered(prefix: string, items: string[]) {
     return items.every((_, i) => {
       const v = checklist[`${prefix}_${i}`];
-      if (v === "yes") return true;
-      if (v === "no") return !!checklist[`${prefix}_${i}_notes`]?.trim();
-      return false;
+      return v === "yes" || v === "no";
     });
   }
 
-  function handleNotesChange(value: string) {
-    setNotes(value);
-    if (!run) return;
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    const runId = run.id;
-    saveTimer.current = setTimeout(async () => {
-      try { await updateNotes(runId, value); } catch { /* best effort */ }
-    }, 800);
-  }
 
   if (loading) return null;
 
@@ -472,29 +456,17 @@ export function RunTest({ onNavigate }: Props) {
                     <input type="radio" name={key} checked={val === "no"} onChange={() => setItemValue(key, "no")} />
                   </span>
                   <span className="checklist-col-notes">
-                    {val === "no" ? (
-                      <input
-                        type="text"
-                        className="checklist-note-input"
-                        placeholder="Explain why..."
-                        value={checklist[`${key}_notes`] ?? ""}
-                        onChange={(e) => setItemNotes(key, e.target.value)}
-                      />
-                    ) : null}
+                    <input
+                      type="text"
+                      className="checklist-note-input"
+                      placeholder="Add note..."
+                      value={checklist[`${key}_notes`] ?? ""}
+                      onChange={(e) => setItemNotes(key, e.target.value)}
+                    />
                   </span>
                 </div>
               );
             })}
-          </div>
-          <div className="run-test-notes">
-            <label className="run-test-notes-label">Notes</label>
-            <textarea
-              className="run-test-notes-input"
-              placeholder="Log any observations, anomalies, or setup notes here..."
-              value={notes}
-              onChange={(e) => handleNotesChange(e.target.value)}
-              rows={4}
-            />
           </div>
 
           <button
@@ -547,15 +519,13 @@ export function RunTest({ onNavigate }: Props) {
                     <input type="radio" name={key} checked={val === "no"} onChange={() => setItemValue(key, "no")} />
                   </span>
                   <span className="checklist-col-notes">
-                    {val === "no" ? (
-                      <input
-                        type="text"
-                        className="checklist-note-input"
-                        placeholder="Explain why..."
-                        value={checklist[`${key}_notes`] ?? ""}
-                        onChange={(e) => setItemNotes(key, e.target.value)}
-                      />
-                    ) : null}
+                    <input
+                      type="text"
+                      className="checklist-note-input"
+                      placeholder="Add note..."
+                      value={checklist[`${key}_notes`] ?? ""}
+                      onChange={(e) => setItemNotes(key, e.target.value)}
+                    />
                   </span>
                 </div>
               );

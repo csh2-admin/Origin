@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createFieldNote, getFieldNotes, updateFieldNote, deleteFieldNote } from "../api/client";
 import type { FieldNote } from "../api/client";
+import { WeeboActions } from "./WeeboActions";
 
 const CATEGORIES = ["Action Item", "System Maintenance", "Performance", "Other"] as const;
 type Category = typeof CATEGORIES[number];
@@ -187,7 +188,8 @@ function EditModal({ note, onClose, onSaved }: EditModalProps) {
   );
 }
 
-export function VoiceNote({ engineer }: { engineer: string }) {
+export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string; initialTab?: "notes" | "actions" }) {
+  const [activeTab, setActiveTab] = useState<"notes" | "actions">(initialTab);
   const [note, setNote] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -262,6 +264,15 @@ export function VoiceNote({ engineer }: { engineer: string }) {
   return (
     <div className="field-notes-page">
       <h2>Field Notes</h2>
+      <div className="weebo-tabs" style={{ marginBottom: "1.25rem" }}>
+        <button className={`weebo-tab${activeTab === "notes" ? " active" : ""}`} onClick={() => setActiveTab("notes")}>Notes</button>
+        <button className={`weebo-tab${activeTab === "actions" ? " active" : ""}`} onClick={() => setActiveTab("actions")}>Action Items</button>
+      </div>
+
+      {activeTab === "actions" ? (
+        <WeeboActions />
+      ) : (
+      <>
       <p className="field-notes-subtitle">
         Log observations, notes, and photos from the field.
       </p>
@@ -394,6 +405,8 @@ export function VoiceNote({ engineer }: { engineer: string }) {
           onClose={() => setEditNote(null)}
           onSaved={() => { setEditNote(null); loadNotes(); }}
         />
+      )}
+      </>
       )}
     </div>
   );

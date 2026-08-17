@@ -75,11 +75,13 @@ export function App() {
   const [activeHead, setActiveHead] = useState<number | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const [weeboTab, setWeeboTab] = useState<"records" | "new" | "actions" | "ask">("records");
+  const [fieldNotesTab, setFieldNotesTab] = useState<"notes" | "actions">("notes");
 
   const isTimeTraveling = viewAt !== "";
 
   function navigateTo(p: Page) {
     setPage(p);
+    if (p !== "voice-note") setFieldNotesTab("notes");
     if (window.innerWidth <= 1024) setNavOpen(false);
   }
 
@@ -155,7 +157,7 @@ export function App() {
           </button>
           <img src="/logo.png" alt="CSH2" className="header-logo" />
           <h1>ORIGIN</h1>
-          <span style={{ fontSize: "0.65rem", color: "var(--text-secondary)", marginLeft: "0.4rem", alignSelf: "flex-end", marginBottom: "0.35rem" }}>v0.1</span>
+          <span style={{ fontSize: "0.65rem", color: "var(--text-secondary)", marginLeft: "0.4rem", alignSelf: "flex-end", marginBottom: "0.35rem" }}>v0.2</span>
         </div>
         {page === "asset-model" && (
           <div className="time-travel">
@@ -216,7 +218,7 @@ export function App() {
         <div className="page-content">
           {page === "dashboard" ? (
             <Dashboard onNavigate={(p) => {
-              if (p === "weebo:actions") { setPage("weebo"); setWeeboTab("actions"); }
+              if (p === "weebo:actions") { setPage("voice-note"); setFieldNotesTab("actions"); }
               else setPage(p as Page);
             }} />
           ) : page === "how-to" ? (
@@ -273,7 +275,7 @@ export function App() {
           ) : page === "diagnostics" ? (
             <SystemDiagnostics />
           ) : page === "voice-note" ? (
-            <VoiceNote engineer={user!} />
+            <VoiceNote key={fieldNotesTab} engineer={user!} initialTab={fieldNotesTab} />
           ) : page === "weebo" ? (
             <div className="weebo-page">
               <div className="weebo-tabs">
