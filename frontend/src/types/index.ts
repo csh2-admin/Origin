@@ -68,7 +68,7 @@ export interface TestReport {
   procedure_steps: { run_id: number; step_order: number; notes: string | null; checked_at: string | null; torque_actual: string | null; action: string; torque_spec: string | null; sub_page: string; pump_head: number }[];
   memos: MemoEntry[];
   actions: { id: number; action_text: string; status: string | null; responsible: string | null; due_date: string | null; notes: string | null; created_at: string }[];
-  timeline: { event_type: string; effective_time?: string; taken_at?: string; logged_at?: string; created_at?: string; display_name?: string; position?: string; installed_part_number?: string; removed_part_number?: string; changed_by?: string; note?: string; caption?: string; photo_type?: string; uploaded_by?: string; engineer?: string; summary?: string; severity?: string; action_text?: string; responsible?: string; status?: string }[];
+  timeline: { event_type: string; effective_time?: string; taken_at?: string; logged_at?: string; created_at?: string; display_name?: string; position?: string; installed_part_number?: string; removed_part_number?: string; changed_by?: string; note?: string; caption?: string; photo_type?: string; uploaded_by?: string; engineer?: string; summary?: string; severity?: string; action_text?: string; responsible?: string; status?: string; activity_type?: string; raw_transcript?: string; audio_url?: string }[];
 }
 
 export interface AssemblyVerification {
@@ -94,6 +94,7 @@ export interface MemoEntry {
   severity: string | null;
   additional_notes: string | null;
   raw_transcript: string | null;
+  audio_url: string | null;
   trigger_sim_update: boolean;
 }
 

@@ -817,7 +817,8 @@ def get_test_report(run_id, conn):
             cur.execute(
                 """
                 SELECT id, logged_at, engineer, activity_type, summary,
-                       issues_found, action_items, severity, maintenance_done
+                       issues_found, action_items, severity, maintenance_done,
+                       source_file, raw_transcript, audio_url
                 FROM memo_log
                 WHERE logged_at::date = %s::date
                 ORDER BY
@@ -883,7 +884,10 @@ def get_test_report(run_id, conn):
 
         for m in memos:
             evt = dict(m)
-            evt["event_type"] = "memo"
+            if m.get("source_file") in ("Field Note", "Voice Note"):
+                evt["event_type"] = "field_note"
+            else:
+                evt["event_type"] = "memo"
             timeline.append(evt)
 
         for a in actions:

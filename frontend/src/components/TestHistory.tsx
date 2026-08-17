@@ -63,6 +63,8 @@ function TimelineIcon({ type }: { type: string }) {
       return <div style={{ ...style, background: "color-mix(in srgb, var(--green-600) 15%, transparent)", color: "var(--green-600)" }}>&#x1F4F7;</div>;
     case "memo":
       return <div style={{ ...style, background: "color-mix(in srgb, var(--blue-500) 15%, transparent)", color: "var(--blue-500)" }}>&#x1F4DD;</div>;
+    case "field_note":
+      return <div style={{ ...style, background: "color-mix(in srgb, var(--accent) 15%, transparent)", color: "var(--accent)" }}>&#x1F4CB;</div>;
     case "action":
       return <div style={{ ...style, background: "color-mix(in srgb, #d97706 15%, transparent)", color: "#d97706" }}>&#x26A0;</div>;
     default:
@@ -70,7 +72,7 @@ function TimelineIcon({ type }: { type: string }) {
   }
 }
 
-function timelineDescription(evt: { event_type: string; display_name?: string; installed_part_number?: string; removed_part_number?: string; changed_by?: string; note?: string; caption?: string; photo_type?: string; uploaded_by?: string; engineer?: string; summary?: string; severity?: string; action_text?: string; responsible?: string; status?: string }): { title: string; detail: string } {
+function timelineDescription(evt: { event_type: string; display_name?: string; installed_part_number?: string; removed_part_number?: string; changed_by?: string; note?: string; caption?: string; photo_type?: string; uploaded_by?: string; engineer?: string; summary?: string; severity?: string; action_text?: string; responsible?: string; status?: string; activity_type?: string; raw_transcript?: string }): { title: string; detail: string } {
   switch (evt.event_type) {
     case "photo":
       return {
@@ -81,6 +83,11 @@ function timelineDescription(evt: { event_type: string; display_name?: string; i
       return {
         title: `Memo${evt.engineer ? ` — ${evt.engineer}` : ""}`,
         detail: evt.summary || "No summary",
+      };
+    case "field_note":
+      return {
+        title: `Field Note${evt.engineer ? ` — ${evt.engineer}` : ""}${evt.activity_type && evt.activity_type !== "Unprocessed" && evt.activity_type !== "Qualitative Observation" ? ` [${evt.activity_type}]` : ""}`,
+        detail: evt.raw_transcript || evt.summary || "No content",
       };
     case "action":
       return {
@@ -408,6 +415,14 @@ export function TestHistory() {
                         <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", flexShrink: 0 }}>{ts ? fmtTime(ts) : ""}</span>
                       </div>
                       <div style={{ fontSize: "0.82rem", color: "var(--text-secondary)", marginTop: "0.15rem" }}>{detail}</div>
+                      {evt.event_type === "field_note" && evt.audio_url && (
+                        <img
+                          src={evt.audio_url}
+                          alt="Field note photo"
+                          style={{ maxWidth: 200, maxHeight: 140, objectFit: "contain", borderRadius: "var(--radius)", border: "1px solid var(--border)", marginTop: "0.35rem", cursor: "pointer" }}
+                          onClick={() => window.open(evt.audio_url, "_blank")}
+                        />
+                      )}
                     </div>
                   </div>
                 );
