@@ -17,6 +17,51 @@ function parsePhotos(audioUrl: string | null): string[] {
   return [audioUrl];
 }
 
+const MAX_DIMENSION = 1600;
+const JPEG_QUALITY = 0.8;
+
+function compressImage(file: File): Promise<File> {
+  return new Promise((resolve) => {
+    if (!file.type.startsWith("image/")) { resolve(file); return; }
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      if (width <= MAX_DIMENSION && height <= MAX_DIMENSION && file.size < 500_000) {
+        resolve(file);
+        return;
+      }
+      if (width > height) {
+        if (width > MAX_DIMENSION) { height = Math.round(height * MAX_DIMENSION / width); width = MAX_DIMENSION; }
+      } else {
+        if (height > MAX_DIMENSION) { width = Math.round(width * MAX_DIMENSION / height); height = MAX_DIMENSION; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            const name = file.name.replace(/\.[^.]+$/, ".jpg");
+            resolve(new File([blob], name, { type: "image/jpeg" }));
+          } else {
+            resolve(file);
+          }
+        },
+        "image/jpeg",
+        JPEG_QUALITY,
+      );
+    };
+    img.onerror = () => resolve(file);
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+async function compressImages(files: File[]): Promise<File[]> {
+  return Promise.all(files.map(compressImage));
+}
+
 function fmtTime(iso: string): string {
   return new Date(iso).toLocaleString(undefined, {
     month: "short", day: "numeric",
@@ -60,13 +105,14 @@ function EditModal({ note, onClose, onSaved }: EditModalProps) {
 
   const totalPhotos = existingPhotos.length + newPhotos.length;
 
-  function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
     const remaining = 4 - totalPhotos;
     const toAdd = files.slice(0, remaining);
-    setNewPhotos((prev) => [...prev, ...toAdd]);
-    setNewPhotoPreviews((prev) => [...prev, ...toAdd.map((f) => URL.createObjectURL(f))]);
+    const compressed = await compressImages(toAdd);
+    setNewPhotos((prev) => [...prev, ...compressed]);
+    setNewPhotoPreviews((prev) => [...prev, ...compressed.map((f) => URL.createObjectURL(f))]);
     if (e.target) e.target.value = "";
   }
 
@@ -261,13 +307,14 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
   const queue = notes.filter((n) => n.activity_type === "Unprocessed" || n.activity_type === "Qualitative Observation");
   const processed = notes.filter((n) => n.activity_type !== "Unprocessed" && n.activity_type !== "Qualitative Observation");
 
-  function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
     const remaining = 4 - photos.length;
     const toAdd = files.slice(0, remaining);
-    setPhotos((prev) => [...prev, ...toAdd]);
-    setPhotoPreviews((prev) => [...prev, ...toAdd.map((f) => URL.createObjectURL(f))]);
+    const compressed = await compressImages(toAdd);
+    setPhotos((prev) => [...prev, ...compressed]);
+    setPhotoPreviews((prev) => [...prev, ...compressed.map((f) => URL.createObjectURL(f))]);
     if (e.target) e.target.value = "";
   }
 
