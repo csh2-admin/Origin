@@ -3,6 +3,7 @@ import { createAction, deleteAction, getActions, getEngineers, updateAction } fr
 import type { ActionItem } from "../types";
 
 const STATUSES = ["Not Started", "In Progress", "Complete"] as const;
+const TEAM_MEMBERS = ["jimmyli", "edwardyoun", "anthonyku", "pjcallahan", "tomtodaro"] as const;
 
 export function WeeboActions() {
   const [items, setItems] = useState<ActionItem[]>([]);
@@ -104,8 +105,11 @@ export function WeeboActions() {
             </div>
             <div className="wne-form-field">
               <label>Responsible</label>
-              <input type="text" value={newItem.responsible}
-                onChange={(e) => setNewItem({ ...newItem, responsible: e.target.value })} />
+              <select value={newItem.responsible}
+                onChange={(e) => setNewItem({ ...newItem, responsible: e.target.value })}>
+                <option value="">Select...</option>
+                {TEAM_MEMBERS.map((m) => <option key={m} value={m}>{m}</option>)}
+              </select>
             </div>
             <div className="wne-form-field">
               <label>Due Date</label>
@@ -173,8 +177,11 @@ export function WeeboActions() {
                       </div>
                       <div className="wne-form-field">
                         <label>Responsible</label>
-                        <input type="text" value={editing.responsible || ""}
-                          onChange={(e) => setEditing({ ...editing, responsible: e.target.value })} />
+                        <select value={editing.responsible || ""}
+                          onChange={(e) => setEditing({ ...editing, responsible: e.target.value })}>
+                          <option value="">Select...</option>
+                          {TEAM_MEMBERS.map((m) => <option key={m} value={m}>{m}</option>)}
+                        </select>
                       </div>
                       <div className="wne-form-field">
                         <label>Due Date</label>

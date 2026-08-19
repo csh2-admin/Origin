@@ -4,6 +4,7 @@ import type { FieldNote } from "../api/client";
 import { WeeboActions } from "./WeeboActions";
 
 const CATEGORIES = ["Action Item", "System Maintenance", "Performance", "Other"] as const;
+const TEAM_MEMBERS = ["jimmyli", "edwardyoun", "anthonyku", "pjcallahan", "tomtodaro"] as const;
 type Category = typeof CATEGORIES[number];
 
 function fmtTime(iso: string): string {
@@ -127,13 +128,14 @@ function EditModal({ note, onClose, onSaved }: EditModalProps) {
           {category === "Action Item" && (
             <>
               <label className="fn-modal-label">Assign To</label>
-              <input
-                type="text"
+              <select
                 value={responsible}
                 onChange={(e) => setResponsible(e.target.value)}
-                placeholder="Person responsible"
                 style={{ width: "100%", padding: "0.4rem 0.6rem", borderRadius: "var(--radius)", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", marginBottom: "0.75rem" }}
-              />
+              >
+                <option value="">Select...</option>
+                {TEAM_MEMBERS.map((m) => <option key={m} value={m}>{m}</option>)}
+              </select>
             </>
           )}
 
@@ -390,13 +392,14 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
                     <div className="fn-queue-actions" style={{ flexDirection: "column", alignItems: "stretch" }}>
                       <label style={{ fontSize: "0.8rem", fontWeight: 600 }}>Assign action to:</label>
                       <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-                        <input
-                          type="text"
+                        <select
                           value={assignTo}
                           onChange={(e) => setAssignTo(e.target.value)}
-                          placeholder="Person responsible"
                           style={{ flex: 1, padding: "0.35rem 0.5rem", borderRadius: "var(--radius)", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "0.8rem" }}
-                        />
+                        >
+                          <option value="">Select...</option>
+                          {TEAM_MEMBERS.map((m) => <option key={m} value={m}>{m}</option>)}
+                        </select>
                         <button className="btn btn-primary fn-sort-btn" onClick={handleAssignSubmit}>Save</button>
                         <button className="btn btn-secondary fn-sort-btn" onClick={() => setAssigningNote(null)}>Cancel</button>
                       </div>
