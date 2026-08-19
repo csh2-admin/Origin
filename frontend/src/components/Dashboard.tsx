@@ -72,6 +72,9 @@ export function Dashboard({ onNavigate }: Props) {
           <div className="dash-card-header">Active Test Run</div>
           {data.active_run ? (
             <div className="dash-card-body">
+              {data.active_run.test_name && (
+                <div style={{ fontWeight: 600, marginBottom: "0.5rem" }}>{data.active_run.test_name}</div>
+              )}
               <div className="dash-stat">
                 <span className="dash-stat-value">{data.active_run.test_type === "simplex" ? "Simplex" : "Triplex"}</span>
                 <span className="dash-stat-label">Type</span>

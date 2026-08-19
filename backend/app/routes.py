@@ -513,7 +513,7 @@ def get_dashboard(conn):
     try:
         cur.execute(
             """
-            SELECT id, test_type, current_step, started_at, started_by
+            SELECT id, test_type, test_name, current_step, started_at, started_by
             FROM test_runs WHERE completed_at IS NULL
             ORDER BY started_at DESC LIMIT 1
             """
@@ -572,7 +572,7 @@ def get_active_test_run(conn):
     cur = conn.cursor()
     cur.execute(
         """
-        SELECT id, test_type, current_step, checklist_state, notes, started_at, started_by, completed_at
+        SELECT id, test_type, test_name, current_step, checklist_state, notes, started_at, started_by, completed_at
         FROM test_runs
         WHERE completed_at IS NULL
         ORDER BY started_at DESC
@@ -591,7 +591,7 @@ def get_test_run_history(conn):
     cur = conn.cursor()
     cur.execute(
         """
-        SELECT id, test_type, current_step, started_at, started_by, completed_at
+        SELECT id, test_type, test_name, current_step, started_at, started_by, completed_at
         FROM test_runs
         ORDER BY started_at DESC
         LIMIT 25
@@ -606,6 +606,7 @@ def get_test_run_history(conn):
 def start_test_run(conn):
     body = request.get_json() or {}
     test_type = body.get("test_type", "simplex")
+    test_name = body.get("test_name")
     if test_type not in ("simplex", "triplex"):
         return jsonify({"detail": "test_type must be simplex or triplex"}), 400
     cur = conn.cursor()
@@ -614,11 +615,11 @@ def start_test_run(conn):
         return jsonify({"detail": "A test run is already in progress"}), 409
     cur.execute(
         """
-        INSERT INTO test_runs (test_type, current_step, checklist_state, started_by)
-        VALUES (%s, 'build', '{}', CURRENT_USER)
-        RETURNING id, test_type, current_step, checklist_state, notes, started_at, started_by, completed_at
+        INSERT INTO test_runs (test_type, test_name, current_step, checklist_state, started_by)
+        VALUES (%s, %s, 'build', '{}', CURRENT_USER)
+        RETURNING id, test_type, test_name, current_step, checklist_state, notes, started_at, started_by, completed_at
         """,
-        (test_type,),
+        (test_type, test_name),
     )
     row = _dict_row(cur)
     conn.commit()
@@ -670,7 +671,7 @@ def advance_test_run(run_id, conn):
         SET current_step = %s, checklist_state = %s, completed_at = %s,
             asset_snapshot = COALESCE(%s, asset_snapshot)
         WHERE id = %s
-        RETURNING id, test_type, current_step, checklist_state, notes, started_at, started_by, completed_at
+        RETURNING id, test_type, test_name, current_step, checklist_state, notes, started_at, started_by, completed_at
         """,
         (next_step, checklist_state, completed_at, asset_snapshot, run_id),
     )
@@ -705,7 +706,7 @@ def update_checklist(run_id, conn):
     cur.execute(
         """
         UPDATE test_runs SET checklist_state = %s WHERE id = %s AND completed_at IS NULL
-        RETURNING id, test_type, current_step, checklist_state, notes, started_at, started_by, completed_at
+        RETURNING id, test_type, test_name, current_step, checklist_state, notes, started_at, started_by, completed_at
         """,
         (body.get("checklist_state", "{}"), run_id),
     )
@@ -725,7 +726,7 @@ def update_notes(run_id, conn):
     cur.execute(
         """
         UPDATE test_runs SET notes = %s WHERE id = %s AND completed_at IS NULL
-        RETURNING id, test_type, current_step, checklist_state, notes, started_at, started_by, completed_at
+        RETURNING id, test_type, test_name, current_step, checklist_state, notes, started_at, started_by, completed_at
         """,
         (body.get("notes", ""), run_id),
     )
@@ -743,7 +744,7 @@ def get_test_report(run_id, conn):
     cur = conn.cursor()
     cur.execute(
         """
-        SELECT id, test_type, current_step, checklist_state, notes,
+        SELECT id, test_type, test_name, current_step, checklist_state, notes,
                started_at, started_by, completed_at, asset_snapshot
         FROM test_runs WHERE id = %s
         """,
@@ -1264,10 +1265,12 @@ def update_field_note(conn, note_id):
     if request.content_type and "multipart/form-data" in request.content_type:
         note_text = request.form.get("note")
         category = request.form.get("category")
+        responsible = request.form.get("responsible")
     else:
         data = request.get_json(silent=True) or {}
         note_text = data.get("note")
         category = data.get("category")
+        responsible = data.get("responsible")
 
     updates = []
     params = []
@@ -1331,7 +1334,7 @@ def update_field_note(conn, note_id):
                     row.get("engineer", ""),
                     action_text,
                     "Not Started",
-                    row.get("engineer", ""),
+                    responsible or row.get("engineer", ""),
                     note_id,
                 ),
             )

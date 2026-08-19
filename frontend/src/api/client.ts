@@ -117,10 +117,10 @@ export async function getTestRunHistory() {
   return request<TestRun[]>("/test-run/history");
 }
 
-export async function startTestRun(testType: "simplex" | "triplex") {
+export async function startTestRun(testType: "simplex" | "triplex", testName?: string) {
   return request<TestRun>("/test-run/start", {
     method: "POST",
-    body: JSON.stringify({ test_type: testType }),
+    body: JSON.stringify({ test_type: testType, test_name: testName || null }),
   });
 }
 
@@ -230,11 +230,12 @@ export async function getFieldNotes() {
   return request<FieldNote[]>("/field-notes");
 }
 
-export async function updateFieldNote(id: number, updates: { note?: string; category?: string; remove_photo?: boolean }, photo?: File) {
+export async function updateFieldNote(id: number, updates: { note?: string; category?: string; remove_photo?: boolean; responsible?: string }, photo?: File) {
   if (photo || updates.remove_photo) {
     const form = new FormData();
     if (updates.note !== undefined) form.append("note", updates.note);
     if (updates.category !== undefined) form.append("category", updates.category);
+    if (updates.responsible !== undefined) form.append("responsible", updates.responsible);
     if (updates.remove_photo) form.append("remove_photo", "true");
     if (photo) form.append("photo", photo);
     const res = await fetch(`${BASE}/field-notes/${id}`, {

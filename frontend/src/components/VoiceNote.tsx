@@ -40,6 +40,7 @@ function EditModal({ note, onClose, onSaved }: EditModalProps) {
   const [newPhoto, setNewPhoto] = useState<File | null>(null);
   const [newPhotoPreview, setNewPhotoPreview] = useState<string | null>(null);
   const [removePhoto, setRemovePhoto] = useState(false);
+  const [responsible, setResponsible] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -68,6 +69,7 @@ function EditModal({ note, onClose, onSaved }: EditModalProps) {
           note: text,
           category,
           remove_photo: removePhoto && !newPhoto,
+          responsible: category === "Action Item" ? (responsible.trim() || undefined) : undefined,
         },
         newPhoto || undefined,
       );
@@ -121,6 +123,19 @@ function EditModal({ note, onClose, onSaved }: EditModalProps) {
               </button>
             ))}
           </div>
+
+          {category === "Action Item" && (
+            <>
+              <label className="fn-modal-label">Assign To</label>
+              <input
+                type="text"
+                value={responsible}
+                onChange={(e) => setResponsible(e.target.value)}
+                placeholder="Person responsible"
+                style={{ width: "100%", padding: "0.4rem 0.6rem", borderRadius: "var(--radius)", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", marginBottom: "0.75rem" }}
+              />
+            </>
+          )}
 
           <label className="fn-modal-label">Photo</label>
           <input
@@ -254,11 +269,32 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
     setSaved(false);
   }
 
+  const [assigningNote, setAssigningNote] = useState<{ noteItem: FieldNote; category: Category } | null>(null);
+  const [assignTo, setAssignTo] = useState("");
+
   async function handleCategorize(noteItem: FieldNote, category: Category) {
+    if (category === "Action Item") {
+      setAssigningNote({ noteItem, category });
+      setAssignTo(noteItem.engineer);
+      return;
+    }
     try {
       await updateFieldNote(noteItem.id, { category });
       await loadNotes();
     } catch { /* ignore */ }
+  }
+
+  async function handleAssignSubmit() {
+    if (!assigningNote) return;
+    try {
+      await updateFieldNote(assigningNote.noteItem.id, {
+        category: assigningNote.category,
+        responsible: assignTo.trim() || undefined,
+      });
+      await loadNotes();
+    } catch { /* ignore */ }
+    setAssigningNote(null);
+    setAssignTo("");
   }
 
   return (
@@ -350,6 +386,22 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
                   {n.audio_url && (
                     <img src={n.audio_url} alt="Photo" className="field-notes-entry-photo" onClick={() => window.open(n.audio_url!, "_blank")} />
                   )}
+                  {assigningNote?.noteItem.id === n.id ? (
+                    <div className="fn-queue-actions" style={{ flexDirection: "column", alignItems: "stretch" }}>
+                      <label style={{ fontSize: "0.8rem", fontWeight: 600 }}>Assign action to:</label>
+                      <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                        <input
+                          type="text"
+                          value={assignTo}
+                          onChange={(e) => setAssignTo(e.target.value)}
+                          placeholder="Person responsible"
+                          style={{ flex: 1, padding: "0.35rem 0.5rem", borderRadius: "var(--radius)", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "0.8rem" }}
+                        />
+                        <button className="btn btn-primary fn-sort-btn" onClick={handleAssignSubmit}>Save</button>
+                        <button className="btn btn-secondary fn-sort-btn" onClick={() => setAssigningNote(null)}>Cancel</button>
+                      </div>
+                    </div>
+                  ) : (
                   <div className="fn-queue-actions">
                     <span className="fn-queue-label">Sort into:</span>
                     {CATEGORIES.map((c) => (
@@ -359,6 +411,7 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
                     ))}
                     <button className="btn btn-secondary fn-edit-btn" onClick={() => setEditNote(n)}>Edit</button>
                   </div>
+                  )}
                 </div>
               ))}
             </div>

@@ -52,6 +52,7 @@ export interface ComponentPhoto {
 export interface TestRun {
   id: number;
   test_type: "simplex" | "triplex";
+  test_name: string | null;
   current_step: string;
   checklist_state: string;
   notes: string | null;
@@ -179,6 +180,7 @@ export interface DashboardData {
   active_run: {
     id: number;
     test_type: string;
+    test_name: string | null;
     current_step: string;
     started_at: string;
     started_by: string;

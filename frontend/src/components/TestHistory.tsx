@@ -184,9 +184,10 @@ export function TestHistory() {
       </div>
 
       <div ref={printRef}>
-        <h1>Test Report — Run #{report.run.id}</h1>
+        <h1>Test Report{report.run.test_name ? ` — ${report.run.test_name}` : ` — Run #${report.run.id}`}</h1>
         <div className="meta" style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "1rem" }}>
           <strong>{report.run.test_type === "simplex" ? "Simplex" : "Triplex"}</strong> test run
+          {report.run.test_name && <>&nbsp;| Run #{report.run.id}</>}
           &nbsp;| Started by {report.run.started_by} on {fmtDate(report.run.started_at)}
           {report.run.completed_at && <>&nbsp;| Completed {fmtDate(report.run.completed_at)}</>}
           &nbsp;| Duration: {duration(report.run.started_at, report.run.completed_at)}
@@ -438,6 +439,7 @@ export function TestHistory() {
             <thead>
               <tr>
                 <th>Run #</th>
+                <th>Name</th>
                 <th>Type</th>
                 <th>Started</th>
                 <th>Started By</th>
@@ -454,6 +456,7 @@ export function TestHistory() {
                   style={{ cursor: "pointer" }}
                 >
                   <td>{h.id}</td>
+                  <td>{h.test_name || "—"}</td>
                   <td>{h.test_type === "simplex" ? "Simplex" : "Triplex"}</td>
                   <td>{fmtTime(h.started_at)}</td>
                   <td>{h.started_by}</td>

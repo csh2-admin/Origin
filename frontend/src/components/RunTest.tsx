@@ -77,6 +77,7 @@ export function RunTest({ onNavigate }: Props) {
   const [checklist, setChecklist] = useState<Record<string, string>>({});
   const [advancing, setAdvancing] = useState(false);
   const [testType, setTestType] = useState<"simplex" | "triplex" | null>(null);
+  const [testName, setTestName] = useState("");
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [assemblyRuns, setAssemblyRuns] = useState<Record<string, AssemblyRun[]>>({});
   const [assemblyChoice, setAssemblyChoice] = useState<Record<string, "new" | number>>({});
@@ -133,7 +134,7 @@ export function RunTest({ onNavigate }: Props) {
     if (!testType) return;
     setAdvancing(true);
     try {
-      const r = await startTestRun(testType);
+      const r = await startTestRun(testType, testName.trim() || undefined);
       setRun(r);
       setChecklist({});
       loadHistory();
@@ -251,7 +252,7 @@ export function RunTest({ onNavigate }: Props) {
             <div className="active-run-banner">
               <div className="active-run-indicator" />
               <div>
-                <strong>Test in progress</strong> — {activeInHistory.test_type === "simplex" ? "Simplex" : "Triplex"} run
+                <strong>Test in progress{activeInHistory.test_name ? `: ${activeInHistory.test_name}` : ""}</strong> — {activeInHistory.test_type === "simplex" ? "Simplex" : "Triplex"} run
                 started by <strong>{activeInHistory.started_by}</strong> at {fmtTime(activeInHistory.started_at)}
                 <span style={{ marginLeft: "0.5rem", opacity: 0.7 }}>
                   (Step: {stepLabel(activeInHistory.current_step)}, {duration(activeInHistory.started_at, null)} elapsed)
@@ -280,9 +281,22 @@ export function RunTest({ onNavigate }: Props) {
                 </label>
               </div>
               {testType && (
-                <button className="btn btn-primary" style={{ width: "auto", marginTop: "1rem" }} onClick={handleStart} disabled={advancing}>
-                  {advancing ? "Starting..." : `Start ${testType === "simplex" ? "Simplex" : "Triplex"} Test Run`}
-                </button>
+                <>
+                  <div style={{ marginTop: "1rem", maxWidth: 400 }}>
+                    <label htmlFor="test-name" style={{ display: "block", fontWeight: 600, marginBottom: "0.3rem" }}>Test Name</label>
+                    <input
+                      id="test-name"
+                      type="text"
+                      value={testName}
+                      onChange={(e) => setTestName(e.target.value)}
+                      placeholder="e.g. Endurance Run #4"
+                      style={{ width: "100%", padding: "0.5rem 0.75rem", borderRadius: "var(--radius)", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)" }}
+                    />
+                  </div>
+                  <button className="btn btn-primary" style={{ width: "auto", marginTop: "1rem" }} onClick={handleStart} disabled={advancing}>
+                    {advancing ? "Starting..." : `Start ${testType === "simplex" ? "Simplex" : "Triplex"} Test Run`}
+                  </button>
+                </>
               )}
             </>
           ) : (
@@ -483,7 +497,7 @@ export function RunTest({ onNavigate }: Props) {
       {/* Step: Test */}
       {run?.current_step === "test" && (
         <div className="run-test-card">
-          <h2>Step 4: Run Test</h2>
+          <h2>Step 4: Run Test{run.test_name ? ` — ${run.test_name}` : ""}</h2>
           <p>Run the test and log results using the <button className="link-btn" onClick={() => onNavigate("weebo")}>Weebo</button> tab.</p>
           <div className="test-prompt">
             <p>Ready to proceed? Confirm the test is complete.</p>
