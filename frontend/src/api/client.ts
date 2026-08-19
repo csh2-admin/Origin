@@ -216,11 +216,11 @@ export interface FieldNote {
   audio_url: string | null;
 }
 
-export async function createFieldNote(note: string, engineer: string, photo?: File) {
+export async function createFieldNote(note: string, engineer: string, photos?: File[]) {
   const form = new FormData();
   form.append("note", note);
   form.append("engineer", engineer);
-  if (photo) form.append("photo", photo);
+  if (photos) photos.forEach((p) => form.append("photos", p));
   const res = await fetch(`${BASE}/field-notes`, {
     method: "POST",
     credentials: "include",
@@ -234,14 +234,15 @@ export async function getFieldNotes() {
   return request<FieldNote[]>("/field-notes");
 }
 
-export async function updateFieldNote(id: number, updates: { note?: string; category?: string; remove_photo?: boolean; responsible?: string }, photo?: File) {
-  if (photo || updates.remove_photo) {
+export async function updateFieldNote(id: number, updates: { note?: string; category?: string; remove_photo?: boolean; responsible?: string; existing_photos?: string[] }, newPhotos?: File[]) {
+  if ((newPhotos && newPhotos.length) || updates.remove_photo || updates.existing_photos !== undefined) {
     const form = new FormData();
     if (updates.note !== undefined) form.append("note", updates.note);
     if (updates.category !== undefined) form.append("category", updates.category);
     if (updates.responsible !== undefined) form.append("responsible", updates.responsible);
     if (updates.remove_photo) form.append("remove_photo", "true");
-    if (photo) form.append("photo", photo);
+    if (updates.existing_photos !== undefined) form.append("existing_photos", JSON.stringify(updates.existing_photos));
+    if (newPhotos) newPhotos.forEach((p) => form.append("photos", p));
     const res = await fetch(`${BASE}/field-notes/${id}`, {
       method: "PUT",
       credentials: "include",

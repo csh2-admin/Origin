@@ -3562,6 +3562,50 @@ textarea {
   flex-wrap: wrap;
 }
 
+/* Photo grid */
+.field-notes-photo-grid {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.35rem;
+}
+
+.field-notes-photo-thumb {
+  position: relative;
+  display: inline-block;
+}
+
+.field-notes-thumb-img {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.field-notes-thumb-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: var(--red-600, #dc2626);
+  color: #fff;
+  font-size: 0.75rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.field-notes-thumb-remove:hover {
+  opacity: 0.8;
+}
+
 /* Lightbox */
 .lightbox-overlay {
   position: fixed;

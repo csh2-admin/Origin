@@ -1326,15 +1326,18 @@ def create_field_note(conn):
     if not note:
         return jsonify({"detail": "Note text is required"}), 400
 
-    photo_url = None
-    if "photo" in request.files:
-        photo_file = request.files["photo"]
-        note_dir = os.path.join(current_app.config["UPLOAD_DIR"], "field_notes")
-        os.makedirs(note_dir, exist_ok=True)
+    photo_urls = []
+    note_dir = os.path.join(current_app.config["UPLOAD_DIR"], "field_notes")
+    os.makedirs(note_dir, exist_ok=True)
+    photos = request.files.getlist("photos") or []
+    if not photos and "photo" in request.files:
+        photos = [request.files["photo"]]
+    for photo_file in photos[:4]:
         ext = os.path.splitext(photo_file.filename or "photo.jpg")[1] or ".jpg"
         filename = f"{uuid.uuid4().hex}{ext}"
         photo_file.save(os.path.join(note_dir, filename))
-        photo_url = f"/uploads/field_notes/{filename}"
+        photo_urls.append(f"/uploads/field_notes/{filename}")
+    photo_url = json.dumps(photo_urls) if photo_urls else None
 
     cur = conn.cursor()
     cur.execute(
@@ -1406,15 +1409,16 @@ def update_field_note(conn, note_id):
         updates.append("activity_type = %s")
         params.append(category)
 
-    if "photo" in request.files:
-        photo_file = request.files["photo"]
-        note_dir = os.path.join(current_app.config["UPLOAD_DIR"], "field_notes")
-        os.makedirs(note_dir, exist_ok=True)
-        ext = os.path.splitext(photo_file.filename or "photo.jpg")[1] or ".jpg"
-        filename = f"{uuid.uuid4().hex}{ext}"
-        photo_file.save(os.path.join(note_dir, filename))
-        updates.append("audio_url = %s")
-        params.append(f"/uploads/field_notes/{filename}")
+    new_photos = request.files.getlist("photos") or []
+    if not new_photos and "photo" in request.files:
+        new_photos = [request.files["photo"]]
+
+    # Get existing photos to preserve or replace
+    existing_photos_json = None
+    if request.content_type and "multipart/form-data" in request.content_type:
+        existing_photos_json = request.form.get("existing_photos")
+    elif data:
+        existing_photos_json = data.get("existing_photos") if isinstance(data.get("existing_photos"), str) else (json.dumps(data.get("existing_photos")) if data.get("existing_photos") is not None else None)
 
     remove_photo = False
     if request.content_type and "multipart/form-data" in request.content_type:
@@ -1422,8 +1426,26 @@ def update_field_note(conn, note_id):
     elif data:
         remove_photo = data.get("remove_photo", False)
 
-    if remove_photo:
+    if remove_photo and not new_photos and existing_photos_json is None:
         updates.append("audio_url = NULL")
+    elif new_photos or existing_photos_json is not None:
+        kept = []
+        if existing_photos_json:
+            try:
+                kept = json.loads(existing_photos_json)
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        note_dir = os.path.join(current_app.config["UPLOAD_DIR"], "field_notes")
+        os.makedirs(note_dir, exist_ok=True)
+        for photo_file in new_photos[:4 - len(kept)]:
+            ext = os.path.splitext(photo_file.filename or "photo.jpg")[1] or ".jpg"
+            filename = f"{uuid.uuid4().hex}{ext}"
+            photo_file.save(os.path.join(note_dir, filename))
+            kept.append(f"/uploads/field_notes/{filename}")
+
+        updates.append("audio_url = %s")
+        params.append(json.dumps(kept[:4]) if kept else None)
 
     if not updates:
         return jsonify({"detail": "No fields to update"}), 400

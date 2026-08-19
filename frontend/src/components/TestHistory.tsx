@@ -3,6 +3,15 @@ import { getTestReport, getTestRunHistory } from "../api/client";
 import type { TestReport, TestRun } from "../types";
 import { Lightbox } from "./Lightbox";
 
+function parsePhotos(audioUrl: string | null | undefined): string[] {
+  if (!audioUrl) return [];
+  try {
+    const parsed = JSON.parse(audioUrl);
+    if (Array.isArray(parsed)) return parsed;
+  } catch { /* not JSON, treat as single URL */ }
+  return [audioUrl];
+}
+
 const PHASE_LABELS: Record<string, string> = {
   seal_installation: "Seal Installation",
   pump_assembly: "Pump Assembly",
@@ -390,12 +399,17 @@ export function TestHistory() {
                       </div>
                       <div style={{ fontSize: "0.82rem", color: "var(--text-secondary)", marginTop: "0.15rem" }}>{detail}</div>
                       {evt.event_type === "field_note" && evt.audio_url && (
-                        <img
-                          src={evt.audio_url}
-                          alt="Field note photo"
-                          style={{ maxWidth: 200, maxHeight: 140, objectFit: "contain", borderRadius: "var(--radius)", border: "1px solid var(--border)", marginTop: "0.35rem", cursor: "pointer" }}
-                          onClick={() => setLightboxSrc(evt.audio_url!)}
-                        />
+                        <div className="field-notes-photo-grid" style={{ marginTop: "0.35rem" }}>
+                          {parsePhotos(evt.audio_url).map((url, i) => (
+                            <img
+                              key={i}
+                              src={url}
+                              alt={`Photo ${i + 1}`}
+                              style={{ maxWidth: 200, maxHeight: 140, objectFit: "contain", borderRadius: "var(--radius)", border: "1px solid var(--border)", cursor: "pointer" }}
+                              onClick={() => setLightboxSrc(url)}
+                            />
+                          ))}
+                        </div>
                       )}
                     </div>
                   </div>

@@ -3,6 +3,15 @@ import { getDailyLog } from "../api/client";
 import type { DailyLog as DailyLogData } from "../types";
 import { Lightbox } from "./Lightbox";
 
+function parsePhotos(audioUrl: string | null): string[] {
+  if (!audioUrl) return [];
+  try {
+    const parsed = JSON.parse(audioUrl);
+    if (Array.isArray(parsed)) return parsed;
+  } catch { /* not JSON, treat as single URL */ }
+  return [audioUrl];
+}
+
 function fmtTime(iso: string): string {
   return new Date(iso).toLocaleString(undefined, {
     hour: "2-digit", minute: "2-digit",
@@ -157,7 +166,11 @@ export function DailyLog() {
                       </div>
                       <p className="field-notes-entry-text">{n.raw_transcript}</p>
                       {n.audio_url && (
-                        <img src={n.audio_url} alt="Photo" className="field-notes-entry-photo" onClick={() => setLightboxSrc(n.audio_url!)} />
+                        <div className="field-notes-photo-grid">
+                          {parsePhotos(n.audio_url).map((url, i) => (
+                            <img key={i} src={url} alt={`Photo ${i + 1}`} className="field-notes-entry-photo" onClick={() => setLightboxSrc(url)} />
+                          ))}
+                        </div>
                       )}
                     </div>
                   ))}

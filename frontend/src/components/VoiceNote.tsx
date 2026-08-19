@@ -8,6 +8,15 @@ const CATEGORIES = ["Action Item", "System Maintenance", "Performance", "Other"]
 const TEAM_MEMBERS = ["jimmyli", "edwardyoun", "anthonyku", "pjcallahan", "tomtodaro"] as const;
 type Category = typeof CATEGORIES[number];
 
+function parsePhotos(audioUrl: string | null): string[] {
+  if (!audioUrl) return [];
+  try {
+    const parsed = JSON.parse(audioUrl);
+    if (Array.isArray(parsed)) return parsed;
+  } catch { /* not JSON, treat as single URL */ }
+  return [audioUrl];
+}
+
 function fmtTime(iso: string): string {
   return new Date(iso).toLocaleString(undefined, {
     month: "short", day: "numeric",
@@ -39,9 +48,9 @@ interface EditModalProps {
 function EditModal({ note, onClose, onSaved }: EditModalProps) {
   const [text, setText] = useState(note.raw_transcript);
   const [category, setCategory] = useState(note.activity_type);
-  const [newPhoto, setNewPhoto] = useState<File | null>(null);
-  const [newPhotoPreview, setNewPhotoPreview] = useState<string | null>(null);
-  const [removePhoto, setRemovePhoto] = useState(false);
+  const [existingPhotos, setExistingPhotos] = useState<string[]>(parsePhotos(note.audio_url));
+  const [newPhotos, setNewPhotos] = useState<File[]>([]);
+  const [newPhotoPreviews, setNewPhotoPreviews] = useState<string[]>([]);
   const [responsible, setResponsible] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -49,15 +58,16 @@ function EditModal({ note, onClose, onSaved }: EditModalProps) {
   const [error, setError] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
 
-  const currentPhotoUrl = removePhoto ? null : (newPhotoPreview || note.audio_url);
+  const totalPhotos = existingPhotos.length + newPhotos.length;
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (file) {
-      setNewPhoto(file);
-      setNewPhotoPreview(URL.createObjectURL(file));
-      setRemovePhoto(false);
-    }
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    const remaining = 4 - totalPhotos;
+    const toAdd = files.slice(0, remaining);
+    setNewPhotos((prev) => [...prev, ...toAdd]);
+    setNewPhotoPreviews((prev) => [...prev, ...toAdd.map((f) => URL.createObjectURL(f))]);
+    if (e.target) e.target.value = "";
   }
 
   async function handleSave() {
@@ -70,10 +80,10 @@ function EditModal({ note, onClose, onSaved }: EditModalProps) {
         {
           note: text,
           category,
-          remove_photo: removePhoto && !newPhoto,
           responsible: category === "Action Item" ? (responsible.trim() || undefined) : undefined,
+          existing_photos: existingPhotos,
         },
-        newPhoto || undefined,
+        newPhotos.length ? newPhotos : undefined,
       );
       onSaved();
     } catch (err) {
@@ -140,29 +150,45 @@ function EditModal({ note, onClose, onSaved }: EditModalProps) {
             </>
           )}
 
-          <label className="fn-modal-label">Photo</label>
+          <label className="fn-modal-label">Photos ({totalPhotos}/4)</label>
           <input
             ref={fileInput}
             type="file"
             accept="image/*"
+            multiple
             onChange={handlePhotoChange}
             style={{ display: "none" }}
           />
-          {currentPhotoUrl ? (
-            <div className="field-notes-photo-preview">
-              <img src={currentPhotoUrl} alt="Photo" className="field-notes-preview-img" />
-              <div>
+          {totalPhotos > 0 ? (
+            <div>
+              <div className="field-notes-photo-grid" style={{ marginBottom: "0.5rem" }}>
+                {existingPhotos.map((url, i) => (
+                  <div key={`e${i}`} className="field-notes-photo-thumb">
+                    <img src={url} alt={`Photo ${i + 1}`} className="field-notes-thumb-img" />
+                    <button className="field-notes-thumb-remove" onClick={() => setExistingPhotos((prev) => prev.filter((_, j) => j !== i))}>&times;</button>
+                  </div>
+                ))}
+                {newPhotoPreviews.map((url, i) => (
+                  <div key={`n${i}`} className="field-notes-photo-thumb">
+                    <img src={url} alt={`New ${i + 1}`} className="field-notes-thumb-img" />
+                    <button className="field-notes-thumb-remove" onClick={() => { setNewPhotos((prev) => prev.filter((_, j) => j !== i)); setNewPhotoPreviews((prev) => prev.filter((_, j) => j !== i)); }}>&times;</button>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                {totalPhotos < 4 && (
+                  <button
+                    className="btn btn-secondary"
+                    style={{ width: "auto", fontSize: "0.75rem", padding: "0.2rem 0.5rem" }}
+                    onClick={() => fileInput.current?.click()}
+                  >
+                    + Add Photo
+                  </button>
+                )}
                 <button
                   className="btn btn-secondary"
                   style={{ width: "auto", fontSize: "0.75rem", padding: "0.2rem 0.5rem" }}
-                  onClick={() => fileInput.current?.click()}
-                >
-                  Change
-                </button>
-                <button
-                  className="btn btn-secondary"
-                  style={{ width: "auto", fontSize: "0.75rem", padding: "0.2rem 0.5rem", marginLeft: "0.25rem" }}
-                  onClick={() => { setRemovePhoto(true); setNewPhoto(null); setNewPhotoPreview(null); }}
+                  onClick={() => { setExistingPhotos([]); setNewPhotos([]); setNewPhotoPreviews([]); }}
                 >
                   Remove
                 </button>
@@ -209,8 +235,8 @@ function EditModal({ note, onClose, onSaved }: EditModalProps) {
 export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string; initialTab?: "notes" | "actions" }) {
   const [activeTab, setActiveTab] = useState<"notes" | "actions">(initialTab);
   const [note, setNote] = useState("");
-  const [photo, setPhoto] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
@@ -236,16 +262,23 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
   const processed = notes.filter((n) => n.activity_type !== "Unprocessed" && n.activity_type !== "Qualitative Observation");
 
   function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (file) {
-      setPhoto(file);
-      setPhotoPreview(URL.createObjectURL(file));
-    }
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    const remaining = 4 - photos.length;
+    const toAdd = files.slice(0, remaining);
+    setPhotos((prev) => [...prev, ...toAdd]);
+    setPhotoPreviews((prev) => [...prev, ...toAdd.map((f) => URL.createObjectURL(f))]);
+    if (e.target) e.target.value = "";
   }
 
-  function removePhoto() {
-    setPhoto(null);
-    setPhotoPreview(null);
+  function removePhotoAt(idx: number) {
+    setPhotos((prev) => prev.filter((_, i) => i !== idx));
+    setPhotoPreviews((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  function clearPhotos() {
+    setPhotos([]);
+    setPhotoPreviews([]);
     if (fileInput.current) fileInput.current.value = "";
     if (cameraInput.current) cameraInput.current.value = "";
   }
@@ -255,10 +288,10 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
     setSaving(true);
     setError("");
     try {
-      await createFieldNote(note, engineer, photo || undefined);
+      await createFieldNote(note, engineer, photos.length ? photos : undefined);
       setSaved(true);
       setNote("");
-      removePhoto();
+      clearPhotos();
       await loadNotes();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Save failed");
@@ -268,7 +301,7 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
 
   function handleDiscard() {
     setNote("");
-    removePhoto();
+    clearPhotos();
     setError("");
     setSaved(false);
   }
@@ -336,26 +369,29 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
             className="field-notes-textarea"
           />
           <div className="field-notes-photo-section">
-            <input ref={fileInput} type="file" accept="image/*" onChange={handlePhotoSelect} style={{ display: "none" }} />
+            <input ref={fileInput} type="file" accept="image/*" multiple onChange={handlePhotoSelect} style={{ display: "none" }} />
             <input ref={cameraInput} type="file" accept="image/*" capture="environment" onChange={handlePhotoSelect} style={{ display: "none" }} />
-            {!photo ? (
+            {photos.length > 0 && (
+              <div className="field-notes-photo-grid">
+                {photoPreviews.map((url, i) => (
+                  <div key={i} className="field-notes-photo-thumb">
+                    <img src={url} alt={`Photo ${i + 1}`} className="field-notes-thumb-img" onClick={() => setLightboxSrc(url)} />
+                    <button className="field-notes-thumb-remove" onClick={() => removePhotoAt(i)}>&times;</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {photos.length < 4 && (
               <div className="field-notes-photo-buttons">
                 <button className="btn btn-secondary field-notes-photo-btn" onClick={() => cameraInput.current?.click()}>
                   Take Photo
                 </button>
                 <button className="btn btn-secondary field-notes-photo-btn" onClick={() => fileInput.current?.click()}>
-                  Upload Photo
+                  Upload Photo{photos.length > 0 ? "s" : ""}
                 </button>
-              </div>
-            ) : (
-              <div className="field-notes-photo-preview">
-                {photoPreview && <img src={photoPreview} alt="Preview" className="field-notes-preview-img" />}
-                <div>
-                  <div className="field-notes-photo-name">{photo.name}</div>
-                  <button className="btn btn-secondary" style={{ width: "auto", fontSize: "0.75rem", marginTop: "0.25rem", padding: "0.2rem 0.5rem" }} onClick={removePhoto}>
-                    Remove
-                  </button>
-                </div>
+                {photos.length > 0 && (
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>{photos.length}/4</span>
+                )}
               </div>
             )}
           </div>
@@ -388,7 +424,11 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
                   </div>
                   <p className="field-notes-entry-text">{n.raw_transcript}</p>
                   {n.audio_url && (
-                    <img src={n.audio_url} alt="Photo" className="field-notes-entry-photo" onClick={() => setLightboxSrc(n.audio_url!)} />
+                    <div className="field-notes-photo-grid">
+                      {parsePhotos(n.audio_url).map((url, i) => (
+                        <img key={i} src={url} alt={`Photo ${i + 1}`} className="field-notes-entry-photo" onClick={() => setLightboxSrc(url)} />
+                      ))}
+                    </div>
                   )}
                   {assigningNote?.noteItem.id === n.id ? (
                     <div className="fn-queue-actions" style={{ flexDirection: "column", alignItems: "stretch" }}>
@@ -445,7 +485,11 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
                   </div>
                   <p className="field-notes-entry-text">{n.raw_transcript}</p>
                   {n.audio_url && (
-                    <img src={n.audio_url} alt="Photo" className="field-notes-entry-photo" onClick={() => setLightboxSrc(n.audio_url!)} />
+                    <div className="field-notes-photo-grid">
+                      {parsePhotos(n.audio_url).map((url, i) => (
+                        <img key={i} src={url} alt={`Photo ${i + 1}`} className="field-notes-entry-photo" onClick={() => setLightboxSrc(url)} />
+                      ))}
+                    </div>
                   )}
                   <button className="btn btn-secondary fn-edit-btn" style={{ marginTop: "0.5rem" }} onClick={() => setEditNote(n)}>
                     Edit
