@@ -910,6 +910,127 @@ def get_test_report(run_id, conn):
     })
 
 
+@bp.route("/daily-log")
+@require_db
+def get_daily_log(conn):
+    date_str = request.args.get("date")
+    if not date_str:
+        date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    cur = conn.cursor()
+
+    # Field notes from this day
+    field_notes = []
+    try:
+        cur.execute(
+            """
+            SELECT id, logged_at, engineer, activity_type, summary,
+                   raw_transcript, audio_url, source_file
+            FROM memo_log
+            WHERE logged_at::date = %s::date
+            ORDER BY logged_at
+            """,
+            (date_str,),
+        )
+        field_notes = [_serialize(r) for r in _dict_rows(cur)]
+    except Exception as exc:
+        logger.warning("[DailyLog] field notes query failed: %s", exc)
+        conn.rollback()
+
+    # Test runs active on this day (started before end of day AND not completed before start of day)
+    test_runs = []
+    try:
+        cur.execute(
+            """
+            SELECT id, test_type, test_name, current_step, checklist_state, notes,
+                   started_at, started_by, completed_at
+            FROM test_runs
+            WHERE started_at::date <= %s::date
+              AND (completed_at IS NULL OR completed_at::date >= %s::date)
+            ORDER BY started_at
+            """,
+            (date_str, date_str),
+        )
+        test_runs = [_serialize(r) for r in _dict_rows(cur)]
+    except Exception as exc:
+        logger.warning("[DailyLog] test runs query failed: %s", exc)
+        conn.rollback()
+
+    # Asset model configuration as of end of this day
+    asset_config = []
+    try:
+        eod = date_str + "T23:59:59+00:00"
+        cur.execute(
+            """
+            SELECT DISTINCT ON (p.name)
+                p.name         AS position,
+                p.display_name,
+                e.installed_part_number   AS part_number,
+                e.installed_part_revision AS part_revision,
+                e.installed_part_serial   AS part_serial,
+                e.effective_time          AS last_changed,
+                e.changed_by
+            FROM positions p
+            LEFT JOIN change_events e
+                ON e.position = p.name
+                AND e.effective_time <= %s
+            ORDER BY p.name, e.effective_time DESC, e.recorded_time DESC
+            """,
+            (eod,),
+        )
+        asset_config = [_serialize(r) for r in _dict_rows(cur)]
+    except Exception as exc:
+        logger.warning("[DailyLog] asset config query failed: %s", exc)
+        conn.rollback()
+
+    # Change events from this day
+    change_events = []
+    try:
+        cur.execute(
+            """
+            SELECT ce.id, ce.position, p.display_name, ce.effective_time,
+                   ce.installed_part_number, ce.installed_part_revision, ce.installed_part_serial,
+                   ce.removed_part_number, ce.removed_part_revision, ce.removed_part_serial,
+                   ce.changed_by, ce.note
+            FROM change_events ce
+            JOIN positions p ON p.name = ce.position
+            WHERE ce.effective_time::date = %s::date
+            ORDER BY ce.effective_time
+            """,
+            (date_str,),
+        )
+        change_events = [_serialize(r) for r in _dict_rows(cur)]
+    except Exception as exc:
+        logger.warning("[DailyLog] change events query failed: %s", exc)
+        conn.rollback()
+
+    # Action items created or updated this day
+    action_items = []
+    try:
+        cur.execute(
+            """
+            SELECT id, action_text, status, responsible, due_date, notes, created_at
+            FROM action_items
+            WHERE created_at::date = %s::date
+            ORDER BY created_at
+            """,
+            (date_str,),
+        )
+        action_items = [_serialize(r) for r in _dict_rows(cur)]
+    except Exception as exc:
+        logger.warning("[DailyLog] action items query failed: %s", exc)
+        conn.rollback()
+
+    return jsonify({
+        "date": date_str,
+        "field_notes": field_notes,
+        "test_runs": test_runs,
+        "asset_config": asset_config,
+        "change_events": change_events,
+        "action_items": action_items,
+    })
+
+
 @bp.route("/test-run/verify-assembly")
 @require_db
 def verify_assembly(conn):

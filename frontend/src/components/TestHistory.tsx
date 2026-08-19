@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getTestReport, getTestRunHistory } from "../api/client";
 import type { TestReport, TestRun } from "../types";
+import { Lightbox } from "./Lightbox";
 
 const PHASE_LABELS: Record<string, string> = {
   seal_installation: "Seal Installation",
@@ -105,6 +106,7 @@ export function TestHistory() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [report, setReport] = useState<TestReport | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
@@ -392,7 +394,7 @@ export function TestHistory() {
                           src={evt.audio_url}
                           alt="Field note photo"
                           style={{ maxWidth: 200, maxHeight: 140, objectFit: "contain", borderRadius: "var(--radius)", border: "1px solid var(--border)", marginTop: "0.35rem", cursor: "pointer" }}
-                          onClick={() => window.open(evt.audio_url, "_blank")}
+                          onClick={() => setLightboxSrc(evt.audio_url!)}
                         />
                       )}
                     </div>
@@ -474,6 +476,7 @@ export function TestHistory() {
           </table>
         </div>
       )}
+      {lightboxSrc && <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
     </div>
   );
 }

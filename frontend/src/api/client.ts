@@ -1,4 +1,4 @@
-import type { ActionItem, AskResponse, AssemblyInstruction, AssemblyRun, AssemblyStepLog, AssemblyVerification, ChangeEvent, ChangePayload, ComponentPhoto, DashboardData, MemoEntry, PartCatalogEntry, PositionLimit, PositionState, TestReport, TestRun, UsageStats } from "../types";
+import type { ActionItem, AskResponse, AssemblyInstruction, AssemblyRun, AssemblyStepLog, AssemblyVerification, ChangeEvent, ChangePayload, ComponentPhoto, DailyLog, DashboardData, MemoEntry, PartCatalogEntry, PositionLimit, PositionState, TestReport, TestRun, UsageStats } from "../types";
 
 const BASE = "/api";
 
@@ -153,6 +153,10 @@ export async function updateNotes(runId: number, notes: string) {
 
 export async function verifyAssembly() {
   return request<AssemblyVerification>("/test-run/verify-assembly");
+}
+
+export async function getDailyLog(date: string) {
+  return request<DailyLog>(`/daily-log?date=${date}`);
 }
 
 export async function getMemos(filters: Record<string, string> = {}) {

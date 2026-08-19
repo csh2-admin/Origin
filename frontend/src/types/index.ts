@@ -72,6 +72,15 @@ export interface TestReport {
   timeline: { event_type: string; effective_time?: string; taken_at?: string; logged_at?: string; created_at?: string; display_name?: string; position?: string; installed_part_number?: string; removed_part_number?: string; changed_by?: string; note?: string; caption?: string; photo_type?: string; uploaded_by?: string; engineer?: string; summary?: string; severity?: string; action_text?: string; responsible?: string; status?: string; activity_type?: string; raw_transcript?: string; audio_url?: string }[];
 }
 
+export interface DailyLog {
+  date: string;
+  field_notes: { id: number; logged_at: string; engineer: string; activity_type: string; summary: string | null; raw_transcript: string; audio_url: string | null; source_file: string | null }[];
+  test_runs: TestRun[];
+  asset_config: { position: string; display_name: string; part_number: string | null; part_revision: string | null; part_serial: string | null; last_changed: string | null; changed_by: string | null }[];
+  change_events: { id: number; position: string; display_name: string; effective_time: string; installed_part_number: string | null; installed_part_revision: string | null; installed_part_serial: string | null; removed_part_number: string | null; removed_part_revision: string | null; removed_part_serial: string | null; changed_by: string; note: string | null }[];
+  action_items: { id: number; action_text: string; status: string | null; responsible: string | null; due_date: string | null; notes: string | null; created_at: string }[];
+}
+
 export interface AssemblyVerification {
   complete: boolean;
   missing: { name: string; display_name: string }[];

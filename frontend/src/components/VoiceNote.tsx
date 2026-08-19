@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createFieldNote, getFieldNotes, updateFieldNote, deleteFieldNote } from "../api/client";
 import type { FieldNote } from "../api/client";
+import { Lightbox } from "./Lightbox";
 import { WeeboActions } from "./WeeboActions";
 
 const CATEGORIES = ["Action Item", "System Maintenance", "Performance", "Other"] as const;
@@ -216,6 +217,7 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
   const [notes, setNotes] = useState<FieldNote[]>([]);
   const [loadingNotes, setLoadingNotes] = useState(true);
   const [editNote, setEditNote] = useState<FieldNote | null>(null);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
 
@@ -386,7 +388,7 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
                   </div>
                   <p className="field-notes-entry-text">{n.raw_transcript}</p>
                   {n.audio_url && (
-                    <img src={n.audio_url} alt="Photo" className="field-notes-entry-photo" onClick={() => window.open(n.audio_url!, "_blank")} />
+                    <img src={n.audio_url} alt="Photo" className="field-notes-entry-photo" onClick={() => setLightboxSrc(n.audio_url!)} />
                   )}
                   {assigningNote?.noteItem.id === n.id ? (
                     <div className="fn-queue-actions" style={{ flexDirection: "column", alignItems: "stretch" }}>
@@ -443,7 +445,7 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
                   </div>
                   <p className="field-notes-entry-text">{n.raw_transcript}</p>
                   {n.audio_url && (
-                    <img src={n.audio_url} alt="Photo" className="field-notes-entry-photo" onClick={() => window.open(n.audio_url!, "_blank")} />
+                    <img src={n.audio_url} alt="Photo" className="field-notes-entry-photo" onClick={() => setLightboxSrc(n.audio_url!)} />
                   )}
                   <button className="btn btn-secondary fn-edit-btn" style={{ marginTop: "0.5rem" }} onClick={() => setEditNote(n)}>
                     Edit
@@ -462,6 +464,7 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
           onSaved={() => { setEditNote(null); loadNotes(); }}
         />
       )}
+      {lightboxSrc && <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
       </>
       )}
     </div>
