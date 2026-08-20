@@ -1369,10 +1369,15 @@ def list_field_notes(conn):
     cur = conn.cursor()
     cur.execute(
         """
-        SELECT id, logged_at, engineer, activity_type, summary, raw_transcript, audio_url
-        FROM memo_log
-        WHERE source_file IN ('Field Note', 'Voice Note')
-        ORDER BY logged_at DESC
+        SELECT m.id, m.logged_at, m.engineer, m.activity_type, m.summary,
+               m.raw_transcript, m.audio_url,
+               COALESCE(r.cnt, 0) AS reply_count
+        FROM memo_log m
+        LEFT JOIN (
+            SELECT memo_id, COUNT(*) AS cnt FROM field_note_replies GROUP BY memo_id
+        ) r ON r.memo_id = m.id
+        WHERE m.source_file IN ('Field Note', 'Voice Note')
+        ORDER BY m.logged_at DESC
         LIMIT 100
         """,
     )
@@ -1496,6 +1501,114 @@ def delete_field_note(conn, note_id):
     row = _dict_row(cur)
     if not row:
         return jsonify({"detail": "Note not found"}), 404
+    conn.commit()
+    return jsonify({"ok": True})
+
+
+# ── Field Note Replies ──
+
+
+@bp.route("/field-notes/<int:note_id>/replies", methods=["GET"])
+@require_db
+def get_replies(conn, note_id):
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT id, memo_id, author, reply_text, created_at
+        FROM field_note_replies
+        WHERE memo_id = %s
+        ORDER BY created_at ASC
+        """,
+        (note_id,),
+    )
+    return jsonify([_serialize(r) for r in _dict_rows(cur)])
+
+
+@bp.route("/field-notes/<int:note_id>/replies", methods=["POST"])
+@require_db
+def create_reply(conn, note_id):
+    body = request.get_json(force=True)
+    text = (body.get("text") or "").strip()
+    if not text:
+        return jsonify({"detail": "Reply text is required"}), 400
+    author = body.get("author", "")
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO field_note_replies (memo_id, author, reply_text)
+        VALUES (%s, %s, %s)
+        RETURNING id, memo_id, author, reply_text, created_at
+        """,
+        (note_id, author, text),
+    )
+    row = _dict_row(cur)
+    conn.commit()
+    return jsonify(_serialize(row)), 201
+
+
+# ── Notifications ──
+
+
+@bp.route("/notifications/unread", methods=["GET"])
+@require_db
+def unread_notifications(conn):
+    user = request.args.get("user", "").strip()
+    if not user:
+        return jsonify({"count": 0, "replies": []})
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT last_read_at FROM notification_reads WHERE username = %s",
+        (user,),
+    )
+    row = _dict_row(cur)
+    last_read = row["last_read_at"] if row else None
+
+    if last_read:
+        cur.execute(
+            """
+            SELECT r.id, r.memo_id, r.author, r.reply_text, r.created_at,
+                   LEFT(m.raw_transcript, 80) AS note_preview
+            FROM field_note_replies r
+            JOIN memo_log m ON m.id = r.memo_id
+            WHERE r.created_at > %s AND r.author != %s
+            ORDER BY r.created_at DESC
+            LIMIT 20
+            """,
+            (last_read, user),
+        )
+    else:
+        cur.execute(
+            """
+            SELECT r.id, r.memo_id, r.author, r.reply_text, r.created_at,
+                   LEFT(m.raw_transcript, 80) AS note_preview
+            FROM field_note_replies r
+            JOIN memo_log m ON m.id = r.memo_id
+            WHERE r.author != %s
+            ORDER BY r.created_at DESC
+            LIMIT 20
+            """,
+            (user,),
+        )
+    replies = [_serialize(r) for r in _dict_rows(cur)]
+    return jsonify({"count": len(replies), "replies": replies})
+
+
+@bp.route("/notifications/read", methods=["POST"])
+@require_db
+def mark_notifications_read(conn):
+    body = request.get_json(force=True)
+    user = (body.get("user") or "").strip()
+    if not user:
+        return jsonify({"detail": "user required"}), 400
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO notification_reads (username, last_read_at)
+        VALUES (%s, NOW())
+        ON CONFLICT (username) DO UPDATE SET last_read_at = NOW()
+        """,
+        (user,),
+    )
     conn.commit()
     return jsonify({"ok": True})
 

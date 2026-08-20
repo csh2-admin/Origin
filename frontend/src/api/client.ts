@@ -214,6 +214,21 @@ export interface FieldNote {
   summary: string;
   raw_transcript: string;
   audio_url: string | null;
+  reply_count: number;
+}
+
+export interface Reply {
+  id: number;
+  memo_id: number;
+  author: string;
+  reply_text: string;
+  created_at: string;
+  note_preview?: string;
+}
+
+export interface UnreadNotifications {
+  count: number;
+  replies: Reply[];
 }
 
 export async function createFieldNote(note: string, engineer: string, photos?: File[]) {
@@ -259,6 +274,28 @@ export async function updateFieldNote(id: number, updates: { note?: string; cate
 
 export async function deleteFieldNote(id: number) {
   return request<{ ok: boolean }>(`/field-notes/${id}`, { method: "DELETE" });
+}
+
+export async function getReplies(noteId: number) {
+  return request<Reply[]>(`/field-notes/${noteId}/replies`);
+}
+
+export async function createReply(noteId: number, text: string, author: string) {
+  return request<Reply>(`/field-notes/${noteId}/replies`, {
+    method: "POST",
+    body: JSON.stringify({ text, author }),
+  });
+}
+
+export async function getUnreadNotifications(user: string) {
+  return request<UnreadNotifications>(`/notifications/unread?user=${encodeURIComponent(user)}`);
+}
+
+export async function markNotificationsRead(user: string) {
+  return request<{ ok: boolean }>("/notifications/read", {
+    method: "POST",
+    body: JSON.stringify({ user }),
+  });
 }
 
 export async function getActions(filters: Record<string, string> = {}) {

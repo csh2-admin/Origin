@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
-import { getMe, getState, logout, postChange } from "./api/client";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { getMe, getState, logout, postChange, getUnreadNotifications, markNotificationsRead } from "./api/client";
+import type { Reply } from "./api/client";
 import { Assembly, ProcedurePage } from "./components/Assembly";
 import { Dashboard } from "./components/Dashboard";
 import { DevTodo } from "./components/DevTodo";
@@ -78,6 +79,10 @@ export function App() {
   const [showFeedback, setShowFeedback] = useState(false);
   const [weeboTab, setWeeboTab] = useState<"records" | "new" | "actions" | "ask">("records");
   const [fieldNotesTab, setFieldNotesTab] = useState<"notes" | "actions">("notes");
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadReplies, setUnreadReplies] = useState<Reply[]>([]);
+  const [showNotifs, setShowNotifs] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
 
   const isTimeTraveling = viewAt !== "";
 
@@ -109,6 +114,36 @@ export function App() {
       loadState();
     }
   }, [user, loadState]);
+
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    async function poll() {
+      try {
+        const data = await getUnreadNotifications(user!);
+        if (active) { setUnreadCount(data.count); setUnreadReplies(data.replies); }
+      } catch { /* ignore */ }
+    }
+    poll();
+    const id = setInterval(poll, 30000);
+    return () => { active = false; clearInterval(id); };
+  }, [user]);
+
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) setShowNotifs(false);
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, []);
+
+  async function handleOpenNotifs() {
+    setShowNotifs(!showNotifs);
+    if (!showNotifs && unreadCount > 0) {
+      await markNotificationsRead(user!);
+      setUnreadCount(0);
+    }
+  }
 
   async function handleLogout() {
     await logout();
@@ -179,6 +214,36 @@ export function App() {
           </div>
         )}
         <div className="user-info">
+          <div className="notif-wrapper" ref={notifRef}>
+            <button className="notif-bell" onClick={handleOpenNotifs} title="Notifications">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+              {unreadCount > 0 && <span className="notif-badge">{unreadCount > 9 ? "9+" : unreadCount}</span>}
+            </button>
+            {showNotifs && (
+              <div className="notif-dropdown">
+                <div className="notif-dropdown-header">Notifications</div>
+                {unreadReplies.length === 0 ? (
+                  <p className="notif-empty">No new replies.</p>
+                ) : (
+                  <div className="notif-list">
+                    {unreadReplies.map((r) => (
+                      <div key={r.id} className="notif-item" onClick={() => { setShowNotifs(false); setPage("voice-note"); }}>
+                        <div className="notif-item-header">
+                          <strong>{r.author}</strong>
+                          <span className="notif-item-time">{new Date(r.created_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                        </div>
+                        <p className="notif-item-text">{r.reply_text}</p>
+                        {r.note_preview && <p className="notif-item-preview">on: {r.note_preview}</p>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
           <button className="btn-feedback" onClick={() => setShowFeedback(true)}>Feedback</button>
           <span>{user}</span>
           <button className="btn-logout" onClick={handleLogout}>Sign Out</button>

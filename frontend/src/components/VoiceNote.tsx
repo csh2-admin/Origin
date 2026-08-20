@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { createFieldNote, getFieldNotes, updateFieldNote, deleteFieldNote } from "../api/client";
-import type { FieldNote } from "../api/client";
+import { createFieldNote, getFieldNotes, updateFieldNote, deleteFieldNote, getReplies, createReply } from "../api/client";
+import type { FieldNote, Reply } from "../api/client";
 import { Lightbox } from "./Lightbox";
 import { WeeboActions } from "./WeeboActions";
 
@@ -81,6 +81,78 @@ function CategoryBadge({ category }: { category: string }) {
     <span className="fn-category-badge" style={{ borderColor: color, color }}>
       {category}
     </span>
+  );
+}
+
+function ReplyThread({ noteId, engineer, replyCount }: { noteId: number; engineer: string; replyCount: number }) {
+  const [open, setOpen] = useState(false);
+  const [replies, setReplies] = useState<Reply[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    try {
+      setReplies(await getReplies(noteId));
+    } catch { /* ignore */ }
+    setLoading(false);
+  }
+
+  function toggle() {
+    if (!open) load();
+    setOpen(!open);
+  }
+
+  async function send() {
+    if (!text.trim()) return;
+    setSending(true);
+    try {
+      const r = await createReply(noteId, text.trim(), engineer);
+      setReplies((prev) => [...prev, r]);
+      setText("");
+    } catch { /* ignore */ }
+    setSending(false);
+  }
+
+  return (
+    <div className="reply-thread">
+      <button className="reply-toggle" onClick={toggle}>
+        {open ? "Hide replies" : replyCount > 0 ? `${replyCount} ${replyCount === 1 ? "reply" : "replies"}` : "Reply"}
+      </button>
+      {open && (
+        <div className="reply-list">
+          {loading ? (
+            <p className="reply-empty">Loading...</p>
+          ) : replies.length === 0 ? (
+            <p className="reply-empty">No replies yet.</p>
+          ) : (
+            replies.map((r) => (
+              <div key={r.id} className="reply-item">
+                <div className="reply-header">
+                  <strong>{r.author}</strong>
+                  <span className="reply-time">{fmtTime(r.created_at)}</span>
+                </div>
+                <p className="reply-text">{r.reply_text}</p>
+              </div>
+            ))
+          )}
+          <div className="reply-input-row">
+            <input
+              type="text"
+              className="reply-input"
+              placeholder="Write a reply..."
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+            />
+            <button className="btn btn-primary reply-send" onClick={send} disabled={sending || !text.trim()}>
+              {sending ? "..." : "Send"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -504,6 +576,7 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
                     <button className="btn btn-secondary fn-edit-btn" onClick={() => setEditNote(n)}>Edit</button>
                   </div>
                   )}
+                  <ReplyThread noteId={n.id} engineer={engineer} replyCount={n.reply_count ?? 0} />
                 </div>
               ))}
             </div>
@@ -538,9 +611,12 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
                       ))}
                     </div>
                   )}
-                  <button className="btn btn-secondary fn-edit-btn" style={{ marginTop: "0.5rem" }} onClick={() => setEditNote(n)}>
-                    Edit
-                  </button>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "0.5rem" }}>
+                    <button className="btn btn-secondary fn-edit-btn" onClick={() => setEditNote(n)}>
+                      Edit
+                    </button>
+                  </div>
+                  <ReplyThread noteId={n.id} engineer={engineer} replyCount={n.reply_count ?? 0} />
                 </div>
               ))}
             </div>
