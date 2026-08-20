@@ -14,7 +14,7 @@ function parsePhotos(audioUrl: string | null): string[] {
 
 function fmtTime(iso: string): string {
   return new Date(iso).toLocaleString(undefined, {
-    hour: "2-digit", minute: "2-digit",
+    hour: "2-digit", minute: "2-digit", timeZoneName: "short",
   });
 }
 
