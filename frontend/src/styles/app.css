@@ -94,6 +94,10 @@ body {
   margin-bottom: 1.5rem;
 }
 
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
 /* ---- Forms ---- */
 label {
   display: block;

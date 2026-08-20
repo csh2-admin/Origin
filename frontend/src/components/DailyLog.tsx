@@ -79,8 +79,8 @@ export function DailyLog() {
         <h2>Daily Log</h2>
         <div className="daily-log-date-picker">
           <button className="btn btn-secondary" style={{ width: "auto", padding: "0.3rem 0.6rem" }} onClick={() => {
-            const d = new Date(date);
-            d.setDate(d.getDate() - 1);
+            const [y, m, day] = date.split("-").map(Number);
+            const d = new Date(y, m - 1, day - 1);
             setDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
           }}>&larr;</button>
           <input
@@ -91,8 +91,8 @@ export function DailyLog() {
             style={{ padding: "0.3rem 0.5rem", borderRadius: "var(--radius)", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)" }}
           />
           <button className="btn btn-secondary" style={{ width: "auto", padding: "0.3rem 0.6rem" }} onClick={() => {
-            const d = new Date(date);
-            d.setDate(d.getDate() + 1);
+            const [y, m, day] = date.split("-").map(Number);
+            const d = new Date(y, m - 1, day + 1);
             const next = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
             if (next <= todayStr()) setDate(next);
           }}>&rarr;</button>
