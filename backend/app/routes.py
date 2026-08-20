@@ -1377,16 +1377,21 @@ def list_field_notes(conn):
         """,
     )
     rows = [_serialize(r) for r in _dict_rows(cur)]
-    if rows:
-        ids = [r["id"] for r in rows]
-        placeholders = ",".join(["%s"] * len(ids))
-        cur.execute(
-            f"SELECT memo_id, COUNT(*) AS cnt FROM field_note_replies WHERE memo_id IN ({placeholders}) GROUP BY memo_id",
-            ids,
-        )
-        counts = {r["memo_id"]: r["cnt"] for r in _dict_rows(cur)}
+    try:
+        if rows:
+            ids = [r["id"] for r in rows]
+            placeholders = ",".join(["%s"] * len(ids))
+            cur.execute(
+                f"SELECT memo_id, COUNT(*) AS cnt FROM field_note_replies WHERE memo_id IN ({placeholders}) GROUP BY memo_id",
+                ids,
+            )
+            counts = {r["memo_id"]: r["cnt"] for r in _dict_rows(cur)}
+            for r in rows:
+                r["reply_count"] = counts.get(r["id"], 0)
+    except Exception:
+        logger.warning("Could not fetch reply counts — check permissions on field_note_replies")
         for r in rows:
-            r["reply_count"] = counts.get(r["id"], 0)
+            r["reply_count"] = 0
     return jsonify(rows)
 
 
