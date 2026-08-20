@@ -3784,11 +3784,12 @@ textarea {
   font-size: 0.85rem;
   padding: 0.75rem 1rem 0.5rem;
   border-bottom: 1px solid var(--border);
+  color: var(--accent);
 }
 
 .notif-empty {
   font-size: 0.8rem;
-  color: var(--text-secondary);
+  color: var(--accent);
   padding: 1rem;
   text-align: center;
 }
@@ -3826,13 +3827,14 @@ textarea {
 .notif-item-text {
   font-size: 0.8rem;
   margin: 0.2rem 0 0;
-  color: var(--text-primary);
+  color: var(--accent);
 }
 
 .notif-item-preview {
   font-size: 0.7rem;
-  color: var(--text-secondary);
+  color: var(--accent);
   margin: 0.2rem 0 0;
+  opacity: 0.7;
   font-style: italic;
   white-space: nowrap;
   overflow: hidden;

@@ -1574,33 +1574,44 @@ def unread_notifications(conn):
     row = _dict_row(cur)
     last_read = row["last_read_at"] if row else None
 
-    if last_read:
-        cur.execute(
-            """
-            SELECT r.id, r.memo_id, r.author, r.reply_text, r.created_at,
-                   LEFT(m.raw_transcript, 80) AS note_preview
-            FROM field_note_replies r
-            JOIN memo_log m ON m.id = r.memo_id
-            WHERE r.created_at > %s AND r.author != %s
-            ORDER BY r.created_at DESC
-            LIMIT 20
-            """,
-            (last_read, user),
-        )
-    else:
-        cur.execute(
-            """
-            SELECT r.id, r.memo_id, r.author, r.reply_text, r.created_at,
-                   LEFT(m.raw_transcript, 80) AS note_preview
-            FROM field_note_replies r
-            JOIN memo_log m ON m.id = r.memo_id
-            WHERE r.author != %s
-            ORDER BY r.created_at DESC
-            LIMIT 20
-            """,
-            (user,),
-        )
-    replies = [_serialize(r) for r in _dict_rows(cur)]
+    try:
+        if last_read:
+            cur.execute(
+                """
+                SELECT id, memo_id, author, reply_text, created_at
+                FROM field_note_replies
+                WHERE created_at > %s AND author != %s
+                ORDER BY created_at DESC
+                LIMIT 20
+                """,
+                (last_read, user),
+            )
+        else:
+            cur.execute(
+                """
+                SELECT id, memo_id, author, reply_text, created_at
+                FROM field_note_replies
+                WHERE author != %s
+                ORDER BY created_at DESC
+                LIMIT 20
+                """,
+                (user,),
+            )
+        replies = [_serialize(r) for r in _dict_rows(cur)]
+        # fetch note previews separately to avoid hypertable JOIN issues
+        if replies:
+            memo_ids = list({r["memo_id"] for r in replies})
+            placeholders = ",".join(["%s"] * len(memo_ids))
+            cur.execute(
+                f"SELECT id, LEFT(raw_transcript, 80) AS preview FROM memo_log WHERE id IN ({placeholders})",
+                memo_ids,
+            )
+            previews = {r["id"]: r["preview"] for r in _dict_rows(cur)}
+            for r in replies:
+                r["note_preview"] = previews.get(r["memo_id"], "")
+    except Exception:
+        logger.warning("Could not fetch notifications — check permissions")
+        replies = []
     return jsonify({"count": len(replies), "replies": replies})
 
 
