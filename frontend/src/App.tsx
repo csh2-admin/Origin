@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getMe, getState, logout, postChange, getUnreadNotifications, markNotificationsRead } from "./api/client";
+import { getMe, getState, logout, postChange, getUnreadNotifications, markNotificationsRead, getFeedback } from "./api/client";
 import type { Reply } from "./api/client";
 import { Assembly, ProcedurePage } from "./components/Assembly";
 import { Dashboard } from "./components/Dashboard";
@@ -83,6 +83,7 @@ export function App() {
   const [unreadReplies, setUnreadReplies] = useState<Reply[]>([]);
   const [showNotifs, setShowNotifs] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
+  const [todoCount, setTodoCount] = useState(0);
 
   const isTimeTraveling = viewAt !== "";
 
@@ -122,6 +123,10 @@ export function App() {
       try {
         const data = await getUnreadNotifications(user!);
         if (active) { setUnreadCount(data.count); setUnreadReplies(data.replies); }
+      } catch { /* ignore */ }
+      try {
+        const items = await getFeedback();
+        if (active) setTodoCount(items.length);
       } catch { /* ignore */ }
     }
     poll();
@@ -278,6 +283,9 @@ export function App() {
                 onClick={() => navigateTo(item.id)}
               >
                 {item.label}
+                {item.id === "dev-todo" && todoCount > 0 && (
+                  <span className="sidebar-badge">{todoCount}</span>
+                )}
               </button>
             )
           )}
