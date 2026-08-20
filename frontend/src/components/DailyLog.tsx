@@ -40,6 +40,7 @@ function todayStr(): string {
 function CategoryBadge({ category }: { category: string }) {
   const colors: Record<string, string> = {
     "Action Item": "var(--red-600)",
+    "Assembly Note": "#b8860b",
     "System Maintenance": "var(--accent)",
     "Performance": "var(--green-600)",
     "Other": "var(--text-secondary)",

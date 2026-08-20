@@ -4,7 +4,7 @@ import type { FieldNote, Reply } from "../api/client";
 import { Lightbox } from "./Lightbox";
 import { WeeboActions } from "./WeeboActions";
 
-const CATEGORIES = ["Action Item", "System Maintenance", "Performance", "Other"] as const;
+const CATEGORIES = ["Action Item", "Assembly Note", "System Maintenance", "Performance", "Other"] as const;
 const TEAM_MEMBERS = ["jimmyli", "edwardyoun", "anthonyku", "pjcallahan", "tomtodaro"] as const;
 type Category = typeof CATEGORIES[number];
 
@@ -72,6 +72,7 @@ function fmtTime(iso: string): string {
 function CategoryBadge({ category }: { category: string }) {
   const colors: Record<string, string> = {
     "Action Item": "var(--red-600)",
+    "Assembly Note": "#b8860b",
     "System Maintenance": "var(--accent)",
     "Performance": "var(--green-600)",
     "Other": "var(--text-secondary)",
