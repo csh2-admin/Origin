@@ -718,6 +718,27 @@ def update_checklist(run_id, conn):
     return jsonify(_serialize(result))
 
 
+@bp.route("/test-run/<int:run_id>/name", methods=["PUT"])
+@require_db
+def update_test_name(run_id, conn):
+    body = request.get_json() or {}
+    test_name = (body.get("test_name") or "").strip() or None
+    cur = conn.cursor()
+    cur.execute(
+        """
+        UPDATE test_runs SET test_name = %s WHERE id = %s AND completed_at IS NULL
+        RETURNING id, test_type, test_name, current_step, checklist_state, notes, started_at, started_by, completed_at
+        """,
+        (test_name, run_id),
+    )
+    row = cur.fetchone()
+    if not row:
+        return jsonify({"detail": "Not found"}), 404
+    result = _dict_row_from(cur.description, row)
+    conn.commit()
+    return jsonify(_serialize(result))
+
+
 @bp.route("/test-run/<int:run_id>/notes", methods=["PUT"])
 @require_db
 def update_notes(run_id, conn):

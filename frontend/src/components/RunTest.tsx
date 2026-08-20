@@ -8,6 +8,7 @@ import {
   getTestRunHistory,
   startTestRun,
   updateChecklist,
+  updateTestName,
   verifyAssembly,
 } from "../api/client";
 import type { AssemblyInstruction, AssemblyRun, AssemblyVerification, TestRun } from "../types";
@@ -90,6 +91,7 @@ export function RunTest({ onNavigate }: Props) {
       setRun(r);
       if (r) {
         setChecklist(parseChecklist(r));
+        setTestName(r.test_name || "");
       }
     } catch { /* auth handled elsewhere */ }
     setLoading(false);
@@ -134,7 +136,7 @@ export function RunTest({ onNavigate }: Props) {
     if (!testType) return;
     setAdvancing(true);
     try {
-      const r = await startTestRun(testType, testName.trim() || undefined);
+      const r = await startTestRun(testType);
       setRun(r);
       setChecklist({});
       loadHistory();
@@ -281,22 +283,9 @@ export function RunTest({ onNavigate }: Props) {
                 </label>
               </div>
               {testType && (
-                <>
-                  <div style={{ marginTop: "1rem", maxWidth: 400 }}>
-                    <label htmlFor="test-name" style={{ display: "block", fontWeight: 600, marginBottom: "0.3rem" }}>Test Name</label>
-                    <input
-                      id="test-name"
-                      type="text"
-                      value={testName}
-                      onChange={(e) => setTestName(e.target.value)}
-                      placeholder="e.g. Endurance Run #4"
-                      style={{ width: "100%", padding: "0.5rem 0.75rem", borderRadius: "var(--radius)", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)" }}
-                    />
-                  </div>
-                  <button className="btn btn-primary" style={{ width: "auto", marginTop: "1rem" }} onClick={handleStart} disabled={advancing}>
-                    {advancing ? "Starting..." : `Start ${testType === "simplex" ? "Simplex" : "Triplex"} Test Run`}
-                  </button>
-                </>
+                <button className="btn btn-primary" style={{ width: "auto", marginTop: "1rem" }} onClick={handleStart} disabled={advancing}>
+                  {advancing ? "Starting..." : `Start ${testType === "simplex" ? "Simplex" : "Triplex"} Test Run`}
+                </button>
               )}
             </>
           ) : (
@@ -498,6 +487,32 @@ export function RunTest({ onNavigate }: Props) {
       {run?.current_step === "test" && (
         <div className="run-test-card">
           <h2>Step 4: Run Test{run.test_name ? ` — ${run.test_name}` : ""}</h2>
+          <div style={{ marginBottom: "1rem", maxWidth: 400 }}>
+            <label htmlFor="test-name" style={{ display: "block", fontWeight: 600, marginBottom: "0.3rem", fontSize: "0.85rem" }}>Test Name</label>
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <input
+                id="test-name"
+                type="text"
+                value={testName}
+                onChange={(e) => setTestName(e.target.value)}
+                placeholder="e.g. Endurance Run #4"
+                style={{ flex: 1, padding: "0.5rem 0.75rem", borderRadius: "var(--radius)", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)" }}
+              />
+              <button
+                className="btn btn-secondary"
+                style={{ width: "auto", fontSize: "0.8rem" }}
+                disabled={testName.trim() === (run.test_name || "")}
+                onClick={async () => {
+                  try {
+                    const updated = await updateTestName(run.id, testName.trim());
+                    setRun(updated);
+                  } catch { /* ignore */ }
+                }}
+              >
+                Save
+              </button>
+            </div>
+          </div>
           <p>Run the test and log results using the <button className="link-btn" onClick={() => onNavigate("weebo")}>Weebo</button> tab.</p>
           <div className="test-prompt">
             <p>Ready to proceed? Confirm the test is complete.</p>

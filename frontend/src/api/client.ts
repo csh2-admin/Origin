@@ -144,6 +144,13 @@ export async function updateChecklist(runId: number, checklistState: Record<stri
   });
 }
 
+export async function updateTestName(runId: number, testName: string) {
+  return request<TestRun>(`/test-run/${runId}/name`, {
+    method: "PUT",
+    body: JSON.stringify({ test_name: testName }),
+  });
+}
+
 export async function updateNotes(runId: number, notes: string) {
   return request<TestRun>(`/test-run/${runId}/notes`, {
     method: "PUT",
