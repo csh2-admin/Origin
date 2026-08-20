@@ -378,7 +378,7 @@ export function App() {
           )}
         </div>
       </div>
-      {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
+      {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} currentPage={page} />}
     </>
   );
 }
