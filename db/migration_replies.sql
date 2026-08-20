@@ -3,7 +3,7 @@
 
 CREATE TABLE IF NOT EXISTS field_note_replies (
     id SERIAL PRIMARY KEY,
-    memo_id INTEGER NOT NULL REFERENCES memo_log(id) ON DELETE CASCADE,
+    memo_id INTEGER NOT NULL,
     author VARCHAR(100) NOT NULL,
     reply_text TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

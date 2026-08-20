@@ -1369,19 +1369,25 @@ def list_field_notes(conn):
     cur = conn.cursor()
     cur.execute(
         """
-        SELECT m.id, m.logged_at, m.engineer, m.activity_type, m.summary,
-               m.raw_transcript, m.audio_url,
-               COALESCE(r.cnt, 0) AS reply_count
-        FROM memo_log m
-        LEFT JOIN (
-            SELECT memo_id, COUNT(*) AS cnt FROM field_note_replies GROUP BY memo_id
-        ) r ON r.memo_id = m.id
-        WHERE m.source_file IN ('Field Note', 'Voice Note')
-        ORDER BY m.logged_at DESC
+        SELECT id, logged_at, engineer, activity_type, summary, raw_transcript, audio_url
+        FROM memo_log
+        WHERE source_file IN ('Field Note', 'Voice Note')
+        ORDER BY logged_at DESC
         LIMIT 100
         """,
     )
-    return jsonify([_serialize(r) for r in _dict_rows(cur)])
+    rows = [_serialize(r) for r in _dict_rows(cur)]
+    if rows:
+        ids = [r["id"] for r in rows]
+        placeholders = ",".join(["%s"] * len(ids))
+        cur.execute(
+            f"SELECT memo_id, COUNT(*) AS cnt FROM field_note_replies WHERE memo_id IN ({placeholders}) GROUP BY memo_id",
+            ids,
+        )
+        counts = {r["memo_id"]: r["cnt"] for r in _dict_rows(cur)}
+        for r in rows:
+            r["reply_count"] = counts.get(r["id"], 0)
+    return jsonify(rows)
 
 
 @bp.route("/field-notes/<int:note_id>", methods=["PUT"])
