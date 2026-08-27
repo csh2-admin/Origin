@@ -362,6 +362,11 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
   const [loadingNotes, setLoadingNotes] = useState(true);
   const [editNote, setEditNote] = useState<FieldNote | null>(null);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [feedFrom, setFeedFrom] = useState("2026-01-01");
+  const [feedTo, setFeedTo] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  });
   const fileInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
 
@@ -437,17 +442,29 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
         <WeeboActions />
       ) : activeTab === "log-feed" ? (
       <>
+      {/* Date filter */}
+      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1rem", flexWrap: "wrap" }}>
+        <label style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>From</label>
+        <input type="date" value={feedFrom} onChange={(e) => setFeedFrom(e.target.value)}
+          style={{ padding: "0.3rem 0.5rem", borderRadius: "var(--radius)", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "0.85rem" }} />
+        <label style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>To</label>
+        <input type="date" value={feedTo} onChange={(e) => setFeedTo(e.target.value)}
+          style={{ padding: "0.3rem 0.5rem", borderRadius: "var(--radius)", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "0.85rem" }} />
+      </div>
       {/* Log Feed */}
       <div className="dash-card">
-        <div className="dash-card-header">Log Feed ({notes.length})</div>
+        <div className="dash-card-header">Log Feed ({notes.filter((n) => {
+          const d = n.logged_at.slice(0, 10);
+          return d >= feedFrom && d <= feedTo;
+        }).length})</div>
         <div className="dash-card-body">
           {loadingNotes ? (
             <p className="field-notes-empty">Loading...</p>
-          ) : notes.length === 0 ? (
-            <p className="field-notes-empty">No notes yet.</p>
+          ) : notes.filter((n) => { const d = n.logged_at.slice(0, 10); return d >= feedFrom && d <= feedTo; }).length === 0 ? (
+            <p className="field-notes-empty">No notes in this date range.</p>
           ) : (
             <div className="field-notes-log">
-              {notes.map((n) => (
+              {notes.filter((n) => { const d = n.logged_at.slice(0, 10); return d >= feedFrom && d <= feedTo; }).map((n) => (
                 <div key={n.id} className="field-notes-entry">
                   <div className="field-notes-entry-header">
                     <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
