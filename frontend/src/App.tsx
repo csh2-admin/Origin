@@ -342,7 +342,7 @@ export function App() {
           ) : page === "test-history" ? (
             <TestHistory />
           ) : page === "daily-log" ? (
-            <DailyLog />
+            <DailyLog engineer={user} />
           ) : page === "assembly" ? (
             <Assembly user={user!} />
           ) : page === "startup" ? (

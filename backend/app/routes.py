@@ -958,6 +958,24 @@ def get_daily_log(conn):
         logger.warning("[DailyLog] field notes query failed: %s", exc)
         conn.rollback()
 
+    # Reply counts for field notes (separate query — hypertable safe)
+    try:
+        if field_notes:
+            ids = [r["id"] for r in field_notes]
+            placeholders = ",".join(["%s"] * len(ids))
+            cur.execute(
+                f"SELECT memo_id, COUNT(*) AS cnt FROM field_note_replies WHERE memo_id IN ({placeholders}) GROUP BY memo_id",
+                ids,
+            )
+            counts = {r["memo_id"]: r["cnt"] for r in _dict_rows(cur)}
+            for r in field_notes:
+                r["reply_count"] = counts.get(r["id"], 0)
+    except Exception:
+        logger.warning("[DailyLog] reply counts query failed — check permissions on field_note_replies")
+        conn.rollback()
+        for r in field_notes:
+            r["reply_count"] = 0
+
     # Test runs active on this day (started before end of day AND not completed before start of day)
     test_runs = []
     try:

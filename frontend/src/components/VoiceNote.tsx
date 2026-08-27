@@ -6,7 +6,6 @@ import { WeeboActions } from "./WeeboActions";
 
 const CATEGORIES = ["Action Item", "Assembly Note", "System Maintenance", "Performance", "Other"] as const;
 const TEAM_MEMBERS = ["jimmyli", "edwardyoun", "anthonyku", "pjcallahan", "tomtodaro"] as const;
-type Category = typeof CATEGORIES[number];
 
 function parsePhotos(audioUrl: string | null): string[] {
   if (!audioUrl) return [];
@@ -377,8 +376,7 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
     loadNotes().finally(() => setLoadingNotes(false));
   }, []);
 
-  const queue = notes.filter((n) => n.activity_type === "Unprocessed" || n.activity_type === "Qualitative Observation");
-  const processed = notes.filter((n) => n.activity_type !== "Unprocessed" && n.activity_type !== "Qualitative Observation");
+  // No longer split into queue/processed — all notes shown in one feed
 
   async function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []);
@@ -424,34 +422,6 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
     clearPhotos();
     setError("");
     setSaved(false);
-  }
-
-  const [assigningNote, setAssigningNote] = useState<{ noteItem: FieldNote; category: Category } | null>(null);
-  const [assignTo, setAssignTo] = useState("");
-
-  async function handleCategorize(noteItem: FieldNote, category: Category) {
-    if (category === "Action Item") {
-      setAssigningNote({ noteItem, category });
-      setAssignTo(noteItem.engineer);
-      return;
-    }
-    try {
-      await updateFieldNote(noteItem.id, { category });
-      await loadNotes();
-    } catch { /* ignore */ }
-  }
-
-  async function handleAssignSubmit() {
-    if (!assigningNote) return;
-    try {
-      await updateFieldNote(assigningNote.noteItem.id, {
-        category: assigningNote.category,
-        responsible: assignTo.trim() || undefined,
-      });
-      await loadNotes();
-    } catch { /* ignore */ }
-    setAssigningNote(null);
-    setAssignTo("");
   }
 
   return (
@@ -526,81 +496,24 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
         </div>
       </div>
 
-      {/* Note Queue */}
-      <div className="dash-card field-notes-input-card">
-        <div className="dash-card-header">Note Queue ({queue.length})</div>
-        <div className="dash-card-body">
-          {loadingNotes ? (
-            <p className="field-notes-empty">Loading...</p>
-          ) : queue.length === 0 ? (
-            <p className="field-notes-empty">No unprocessed notes.</p>
-          ) : (
-            <div className="field-notes-log">
-              {queue.map((n) => (
-                <div key={n.id} className="field-notes-entry">
-                  <div className="field-notes-entry-header">
-                    <strong>{n.engineer}</strong>
-                    <span className="field-notes-entry-time">{fmtTime(n.logged_at)}</span>
-                  </div>
-                  <p className="field-notes-entry-text">{n.raw_transcript}</p>
-                  {n.audio_url && (
-                    <div className="field-notes-photo-grid">
-                      {parsePhotos(n.audio_url).map((url, i) => (
-                        <img key={i} src={url} alt={`Photo ${i + 1}`} className="field-notes-entry-photo" onClick={() => setLightboxSrc(url)} />
-                      ))}
-                    </div>
-                  )}
-                  {assigningNote?.noteItem.id === n.id ? (
-                    <div className="fn-queue-actions" style={{ flexDirection: "column", alignItems: "stretch" }}>
-                      <label style={{ fontSize: "0.8rem", fontWeight: 600 }}>Assign action to:</label>
-                      <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-                        <select
-                          value={assignTo}
-                          onChange={(e) => setAssignTo(e.target.value)}
-                          style={{ flex: 1, padding: "0.35rem 0.5rem", borderRadius: "var(--radius)", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "0.8rem" }}
-                        >
-                          <option value="">Select...</option>
-                          {TEAM_MEMBERS.map((m) => <option key={m} value={m}>{m}</option>)}
-                        </select>
-                        <button className="btn btn-primary fn-sort-btn" onClick={handleAssignSubmit}>Save</button>
-                        <button className="btn btn-secondary fn-sort-btn" onClick={() => setAssigningNote(null)}>Cancel</button>
-                      </div>
-                    </div>
-                  ) : (
-                  <div className="fn-queue-actions">
-                    <span className="fn-queue-label">Sort into:</span>
-                    {CATEGORIES.map((c) => (
-                      <button key={c} className="btn btn-secondary fn-sort-btn" onClick={() => handleCategorize(n, c)}>
-                        {c}
-                      </button>
-                    ))}
-                    <button className="btn btn-secondary fn-edit-btn" onClick={() => setEditNote(n)}>Edit</button>
-                  </div>
-                  )}
-                  <ReplyThread noteId={n.id} engineer={engineer} replyCount={n.reply_count ?? 0} />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Processed Notes */}
+      {/* Log Feed */}
       <div className="dash-card">
-        <div className="dash-card-header">Processed Notes ({processed.length})</div>
+        <div className="dash-card-header">Log Feed ({notes.length})</div>
         <div className="dash-card-body">
           {loadingNotes ? (
             <p className="field-notes-empty">Loading...</p>
-          ) : processed.length === 0 ? (
-            <p className="field-notes-empty">No processed notes yet. Sort notes from the queue above.</p>
+          ) : notes.length === 0 ? (
+            <p className="field-notes-empty">No notes yet. Add one above.</p>
           ) : (
             <div className="field-notes-log">
-              {processed.map((n) => (
+              {notes.map((n) => (
                 <div key={n.id} className="field-notes-entry">
                   <div className="field-notes-entry-header">
                     <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                       <strong>{n.engineer}</strong>
-                      <CategoryBadge category={n.activity_type} />
+                      {n.activity_type && n.activity_type !== "Unprocessed" && n.activity_type !== "Qualitative Observation" && (
+                        <CategoryBadge category={n.activity_type} />
+                      )}
                     </div>
                     <span className="field-notes-entry-time">{fmtTime(n.logged_at)}</span>
                   </div>
@@ -612,11 +525,9 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
                       ))}
                     </div>
                   )}
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "0.5rem" }}>
-                    <button className="btn btn-secondary fn-edit-btn" onClick={() => setEditNote(n)}>
-                      Edit
-                    </button>
-                  </div>
+                  <button className="btn btn-secondary fn-edit-btn" style={{ marginTop: "0.5rem" }} onClick={() => setEditNote(n)}>
+                    Edit
+                  </button>
                   <ReplyThread noteId={n.id} engineer={engineer} replyCount={n.reply_count ?? 0} />
                 </div>
               ))}

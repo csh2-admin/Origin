@@ -3240,6 +3240,12 @@ textarea {
   font-size: 0.72rem;
 }
 
+.fn-sort-btn.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
 .fn-edit-btn {
   width: auto;
   padding: 0.2rem 0.5rem;

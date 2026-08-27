@@ -74,7 +74,7 @@ export interface TestReport {
 
 export interface DailyLog {
   date: string;
-  field_notes: { id: number; logged_at: string; engineer: string; activity_type: string; summary: string | null; raw_transcript: string; audio_url: string | null; source_file: string | null }[];
+  field_notes: { id: number; logged_at: string; engineer: string; activity_type: string; summary: string | null; raw_transcript: string; audio_url: string | null; source_file: string | null; reply_count?: number }[];
   test_runs: TestRun[];
   asset_config: { position: string; display_name: string; part_number: string | null; part_revision: string | null; part_serial: string | null; last_changed: string | null; changed_by: string | null }[];
   change_events: { id: number; position: string; display_name: string; effective_time: string; installed_part_number: string | null; installed_part_revision: string | null; installed_part_serial: string | null; removed_part_number: string | null; removed_part_revision: string | null; removed_part_serial: string | null; changed_by: string; note: string | null }[];
