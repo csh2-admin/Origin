@@ -73,6 +73,14 @@ function parseTags(activityType: string | null): string[] {
   return activityType.split(",").map((t) => t.trim()).filter(Boolean);
 }
 
+function toggleTag(current: string, tag: string): string {
+  const tags = parseTags(current);
+  const idx = tags.indexOf(tag);
+  if (idx >= 0) tags.splice(idx, 1);
+  else tags.push(tag);
+  return tags.length ? tags.join(", ") : "Unprocessed";
+}
+
 function CategoryBadge({ category }: { category: string }) {
   const colors: Record<string, string> = {
     "Action Item": "var(--red-600)",
@@ -365,6 +373,7 @@ function EditModal({ note, onClose, onSaved }: EditModalProps) {
 export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string; initialTab?: "notes" | "actions" | "log-feed" }) {
   const [activeTab, setActiveTab] = useState<"notes" | "actions" | "log-feed">(initialTab);
   const [note, setNote] = useState("");
+  const [newNoteCategory, setNewNoteCategory] = useState("");
   const [photos, setPhotos] = useState<File[]>([]);
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -424,9 +433,10 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
     setSaving(true);
     setError("");
     try {
-      await createFieldNote(note, engineer, photos.length ? photos : undefined);
+      await createFieldNote(note, engineer, photos.length ? photos : undefined, newNoteCategory || undefined);
       setSaved(true);
       setNote("");
+      setNewNoteCategory("");
       clearPhotos();
       await loadNotes();
     } catch (err) {
@@ -521,8 +531,27 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
                       ))}
                     </div>
                   )}
-                  <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.4rem" }}>
+                  <div style={{ display: "flex", gap: "0.35rem", marginTop: "0.4rem", flexWrap: "wrap", alignItems: "center" }}>
                     <button className="btn btn-secondary fn-edit-btn" onClick={() => setEditNote(n)}>Edit</button>
+                    {CATEGORIES.map((cat) => {
+                      const tags = parseTags(n.activity_type);
+                      const isActive = tags.includes(cat);
+                      return (
+                        <button
+                          key={cat}
+                          className={`fn-sort-btn${isActive ? " active" : ""}`}
+                          onClick={async () => {
+                            const newCat = toggleTag(n.activity_type, cat);
+                            try {
+                              await updateFieldNote(n.id, { category: newCat });
+                              await loadNotes();
+                            } catch { /* ignore */ }
+                          }}
+                        >
+                          {cat}
+                        </button>
+                      );
+                    })}
                   </div>
                   <ReplyThread noteId={n.id} engineer={engineer} replyCount={n.reply_count} />
                 </div>
@@ -582,6 +611,21 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
                 )}
               </div>
             )}
+          </div>
+          <div style={{ marginTop: "0.5rem" }}>
+            <label style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginBottom: "0.3rem", display: "block" }}>Category (optional)</label>
+            <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
+              {CATEGORIES.map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  className={`fn-sort-btn${newNoteCategory === cat ? " active" : ""}`}
+                  onClick={() => setNewNoteCategory(newNoteCategory === cat ? "" : cat)}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="field-notes-actions">
             <button className="btn btn-primary field-notes-save-btn" onClick={handleSave} disabled={saving || !note.trim()}>

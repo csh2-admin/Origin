@@ -1362,6 +1362,7 @@ def create_field_note(conn):
 
     note = request.form.get("note", "").strip()
     engineer = request.form.get("engineer", "")
+    category = request.form.get("category", "").strip() or "Unprocessed"
     if not note:
         return jsonify({"detail": "Note text is required"}), 400
 
@@ -1390,7 +1391,7 @@ def create_field_note(conn):
         (
             engineer,
             "Field Note",
-            "Unprocessed",
+            category,
             note[:200] if len(note) > 200 else note,
             note,
             "None",

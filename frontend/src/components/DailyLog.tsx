@@ -414,32 +414,6 @@ export function DailyLog({ engineer }: { engineer: string }) {
             </div>
           )}
 
-          {/* Asset Configuration */}
-          <div className="dash-card" style={{ marginBottom: "1.25rem" }}>
-            <div className="dash-card-header">Asset Model Configuration</div>
-            <div className="dash-card-body">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Position</th>
-                    <th>Part Number</th>
-                    <th>Serial</th>
-                    <th>Revision</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.asset_config.map((a) => (
-                    <tr key={a.position}>
-                      <td>{a.display_name}</td>
-                      <td>{a.part_number || "—"}</td>
-                      <td>{a.part_serial || "—"}</td>
-                      <td>{a.part_revision || "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
         </>
       )}
       {lightboxSrc && <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}

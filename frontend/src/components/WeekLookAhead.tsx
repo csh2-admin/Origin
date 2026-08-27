@@ -126,7 +126,7 @@ export function WeekLookAhead() {
 
   return (
     <div className="week-look-ahead">
-      <h2>One Week Look Ahead</h2>
+      <h2>1-Week Look Ahead</h2>
 
       {/* Action Items */}
       <div className="dash-card" style={{ marginBottom: "1.25rem" }}>
