@@ -145,7 +145,14 @@ export function DailyLog({ engineer }: { engineer: string }) {
 
   useEffect(() => { load(); }, [load]);
 
-  async function handleCategorize(noteId: number, category: Category) {
+  async function handleCategorize(noteId: number, category: Category, currentCategory: string) {
+    if (category === currentCategory) {
+      try {
+        await updateFieldNote(noteId, { category: "Unprocessed" });
+        await load();
+      } catch { /* ignore */ }
+      return;
+    }
     if (category === "Action Item") {
       setAssigningNote({ id: noteId, category });
       setAssignTo("");
@@ -309,7 +316,7 @@ export function DailyLog({ engineer }: { engineer: string }) {
                             key={cat}
                             className={`btn btn-secondary fn-sort-btn${n.activity_type === cat ? " active" : ""}`}
                             style={{ fontSize: "0.7rem", padding: "0.15rem 0.5rem" }}
-                            onClick={() => handleCategorize(n.id, cat)}
+                            onClick={() => handleCategorize(n.id, cat, n.activity_type || "Unprocessed")}
                           >
                             {cat}
                           </button>
