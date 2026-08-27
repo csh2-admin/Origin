@@ -1098,260 +1098,12 @@ def verify_assembly(conn):
     })
 
 
-# ── Weebo: Memo Log ──────────────────────────────────────────────────────────
-
-MEMO_COLUMNS = """id, logged_at, engineer, source_file, activity_type,
-    summary, system_performance, maintenance_done,
-    issues_found, action_items, components_affected,
-    duration_hours, severity, additional_notes, raw_transcript,
-    trigger_sim_update"""
-
-
-@bp.route("/memos")
-@require_db
-def list_memos(conn):
-    engineer = request.args.get("engineer", "")
-    activity_type = request.args.get("activity_type", "")
-    severity = request.args.get("severity", "")
-    search = request.args.get("search", "")
-    date_from = request.args.get("date_from", "")
-    date_to = request.args.get("date_to", "")
-
-    conditions = []
-    params = []
-    if engineer:
-        conditions.append("engineer = %s")
-        params.append(engineer)
-    if activity_type:
-        conditions.append("activity_type = %s")
-        params.append(activity_type)
-    if severity:
-        conditions.append("severity = %s")
-        params.append(severity)
-    if search:
-        like = f"%{search}%"
-        conditions.append(
-            "(summary ILIKE %s OR issues_found ILIKE %s OR "
-            "maintenance_done ILIKE %s OR components_affected ILIKE %s OR "
-            "raw_transcript ILIKE %s)"
-        )
-        params.extend([like, like, like, like, like])
-    if date_from:
-        conditions.append("logged_at::date >= %s::date")
-        params.append(date_from)
-    if date_to:
-        conditions.append("logged_at::date <= %s::date")
-        params.append(date_to)
-
-    where = (" WHERE " + " AND ".join(conditions)) if conditions else ""
-    cur = conn.cursor()
-    cur.execute(
-        f"SELECT {MEMO_COLUMNS} FROM memo_log{where} ORDER BY logged_at DESC LIMIT 500",
-        tuple(params),
-    )
-    rows = _dict_rows(cur)
-    return jsonify([_serialize(r) for r in rows])
-
-
-@bp.route("/memos/<int:memo_id>", methods=["PUT"])
-@require_db
-def update_memo(memo_id, conn):
-    body = request.get_json() or {}
-    cur = conn.cursor()
-    cur.execute(
-        f"""
-        UPDATE memo_log SET
-            engineer = %s, activity_type = %s, summary = %s,
-            system_performance = %s, maintenance_done = %s,
-            issues_found = %s, action_items = %s,
-            components_affected = %s, duration_hours = %s,
-            severity = %s, additional_notes = %s,
-            raw_transcript = %s, trigger_sim_update = %s
-        WHERE id = %s
-        RETURNING {MEMO_COLUMNS}
-        """,
-        (
-            body.get("engineer", ""),
-            body.get("activity_type", ""),
-            body.get("summary", ""),
-            body.get("system_performance", ""),
-            body.get("maintenance_done", ""),
-            body.get("issues_found", ""),
-            body.get("action_items", ""),
-            body.get("components_affected", ""),
-            body.get("duration_hours"),
-            body.get("severity", ""),
-            body.get("additional_notes", ""),
-            body.get("raw_transcript", ""),
-            bool(body.get("trigger_sim_update", False)),
-            memo_id,
-        ),
-    )
-    row = cur.fetchone()
-    if not row:
-        return jsonify({"detail": "Not found"}), 404
-    result = _dict_row_from(cur.description, row)
-    conn.commit()
-    return jsonify(_serialize(result))
-
-
-@bp.route("/memos/<int:memo_id>", methods=["DELETE"])
-@require_db
-def delete_memo(memo_id, conn):
-    cur = conn.cursor()
-    cur.execute("DELETE FROM memo_log WHERE id = %s", (memo_id,))
-    conn.commit()
-    return jsonify({"status": "deleted"})
-
-
 @bp.route("/memos/engineers")
 @require_db
 def list_engineers(conn):
     cur = conn.cursor()
     cur.execute("SELECT DISTINCT engineer FROM memo_log ORDER BY engineer")
     return jsonify([r[0] for r in cur.fetchall()])
-
-
-
-PRODUCT_DESCRIPTION = (
-    "a hardware product under test; entries describe daily system performance "
-    "observations and maintenance activities performed by test engineers."
-)
-
-EXTRACT_SYSTEM_PROMPT = f"""You are a technical data extraction assistant for a hardware testing team.
-The engineer has recorded a voice memo about {PRODUCT_DESCRIPTION}.
-Your job is to extract structured information from the transcript and return ONLY valid JSON.
-
-Return a JSON object with exactly these keys (use empty string "" if a field is not mentioned):
-
-{{
-  "activity_type":     "Classify the primary activity: Action Item | Qualitative Observation | System Maintenance | Performance - Quantitative | Hypothesis | Other",
-  "summary":             "1-2 sentence plain-English summary of the entry",
-  "system_performance":  "Any observations about how the system/hardware performed",
-  "maintenance_done":    "Maintenance or repair activities completed",
-  "issues_found":        "Problems, failures, or unexpected behaviours observed",
-  "action_items":        "Follow-up tasks or things that need to happen next",
-  "components_affected": "Specific components, subsystems, or parts mentioned",
-  "duration_hours":      "Total time spent (numeric string, e.g. '2.5', or '' if not mentioned)",
-  "severity":            "Overall severity: Critical | High | Medium | Low | None (pick one)",
-  "additional_notes":    "Any other relevant details not captured above",
-  "trigger_sim_update":  "Boolean (true/false). Set to true ONLY if the entry contains new data or parameter changes that should trigger a simulation update. Default false."
-}}
-
-Return ONLY the JSON object. No markdown, no commentary."""
-
-ACTIVITY_OPTIONS = [
-    "Action Item", "Qualitative Observation", "System Maintenance",
-    "Performance - Quantitative", "Hypothesis", "Other",
-]
-
-
-@bp.route("/memos/extract", methods=["POST"])
-@require_db
-def extract_insights(conn):
-    body = request.get_json() or {}
-    transcript = (body.get("transcript") or "").strip()
-    if not transcript:
-        return jsonify({"detail": "Transcript is required"}), 400
-    try:
-        import anthropic
-        api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-        if not api_key:
-            return jsonify({"detail": "ANTHROPIC_API_KEY not configured"}), 500
-        client = anthropic.Anthropic(api_key=api_key)
-        message = client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=1024,
-            system=EXTRACT_SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": f"Transcript:\n\n{transcript}"}],
-        )
-        raw = message.content[0].text.strip()
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-            raw = raw.strip()
-        data = json.loads(raw)
-        raw_act = data.get("activity_type", "").strip()
-        data["activity_type"] = next(
-            (o for o in ACTIVITY_OPTIONS if o.lower() == raw_act.lower()), "Other"
-        )
-        raw_tsu = data.get("trigger_sim_update", False)
-        if isinstance(raw_tsu, str):
-            data["trigger_sim_update"] = raw_tsu.strip().lower() in ("true", "yes", "1")
-        else:
-            data["trigger_sim_update"] = bool(raw_tsu)
-        return jsonify(data)
-    except json.JSONDecodeError:
-        return jsonify({"detail": "Failed to parse Claude response"}), 500
-    except Exception as e:
-        return jsonify({"detail": str(e)}), 500
-
-
-@bp.route("/memos", methods=["POST"])
-@require_db
-def create_memo(conn):
-    body = request.get_json() or {}
-    cur = conn.cursor()
-
-    def _dur(v):
-        if v is None or str(v).strip() == "":
-            return None
-        try:
-            return float(v)
-        except (ValueError, TypeError):
-            return None
-
-    cur.execute(
-        f"""
-        INSERT INTO memo_log (
-            engineer, source_file, activity_type,
-            summary, system_performance, maintenance_done,
-            issues_found, action_items, components_affected,
-            duration_hours, severity, additional_notes,
-            raw_transcript, raw_insights_json, trigger_sim_update
-        ) VALUES (
-            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
-        )
-        RETURNING {MEMO_COLUMNS}
-        """,
-        (
-            body.get("engineer", ""),
-            body.get("source_file", ""),
-            body.get("activity_type", ""),
-            body.get("summary", ""),
-            body.get("system_performance", ""),
-            body.get("maintenance_done", ""),
-            body.get("issues_found", ""),
-            body.get("action_items", ""),
-            body.get("components_affected", ""),
-            _dur(body.get("duration_hours")),
-            body.get("severity", ""),
-            body.get("additional_notes", ""),
-            body.get("raw_transcript", ""),
-            json.dumps(body.get("raw_insights", {})),
-            bool(body.get("trigger_sim_update", False)),
-        ),
-    )
-    row = _dict_row(cur)
-    conn.commit()
-
-    action_text = body.get("action_items", "").strip()
-    if action_text:
-        items = _parse_action_items(action_text)
-        engineer = body.get("engineer", "")
-        memo_id = row.get("id")
-        for item in items:
-            cur.execute(
-                """
-                INSERT INTO action_items (memo_id, engineer, action_text, responsible)
-                VALUES (%s, %s, %s, %s)
-                """,
-                (memo_id, engineer, item, engineer),
-            )
-        conn.commit()
-
-    return jsonify(_serialize(row)), 201
 
 
 @bp.route("/field-notes", methods=["POST"])
@@ -1520,25 +1272,40 @@ def update_field_note(conn, note_id):
     if not row:
         return jsonify({"detail": "Note not found"}), 404
 
-    if category == "Action Item":
-        action_text = note_text if note_text is not None else (row.get("raw_transcript") or row.get("summary") or "")
-        if action_text:
+    if category is not None:
+        cur.execute("SELECT id FROM action_items WHERE memo_id = %s", (note_id,))
+        existing_action = cur.fetchone()
+
+        tags = [t.strip() for t in category.split(",") if t.strip()] if category else []
+        has_action_tag = "Action Item" in tags
+
+        if has_action_tag and not existing_action:
+            action_text = note_text if note_text is not None else (row.get("raw_transcript") or row.get("summary") or "")
+            if action_text:
+                cur.execute(
+                    """
+                    INSERT INTO action_items (engineer, action_text, status, responsible, memo_id, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, NOW(), NOW())
+                    RETURNING id
+                    """,
+                    (
+                        row.get("engineer", ""),
+                        action_text,
+                        "Not Started",
+                        responsible or row.get("engineer", ""),
+                        note_id,
+                    ),
+                )
+                action_row = cur.fetchone()
+                logger.info("Created action_item id=%s from field note %s", action_row[0] if action_row else None, note_id)
+        elif not has_action_tag and existing_action:
+            cur.execute("DELETE FROM action_items WHERE memo_id = %s", (note_id,))
+            logger.info("Removed action_item for field note %s (tag removed)", note_id)
+        elif has_action_tag and existing_action and note_text is not None:
             cur.execute(
-                """
-                INSERT INTO action_items (engineer, action_text, status, responsible, memo_id, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, %s, NOW(), NOW())
-                RETURNING id
-                """,
-                (
-                    row.get("engineer", ""),
-                    action_text,
-                    "Not Started",
-                    responsible or row.get("engineer", ""),
-                    note_id,
-                ),
+                "UPDATE action_items SET action_text = %s, updated_at = NOW() WHERE memo_id = %s",
+                (note_text, note_id),
             )
-            action_row = cur.fetchone()
-            logger.info("Created action_item id=%s from field note %s", action_row[0] if action_row else None, note_id)
 
     conn.commit()
     return jsonify(_serialize(row))
@@ -1675,16 +1442,6 @@ def mark_notifications_read(conn):
     return jsonify({"ok": True})
 
 
-def _parse_action_items(text):
-    import re
-    items = []
-    for line in re.split(r"[;\n]", text):
-        cleaned = re.sub(r"^[\s\-\*\d\.\)]+", "", line).strip()
-        if cleaned:
-            items.append(cleaned)
-    return items
-
-
 def _dict_row_from(description, row):
     cols = [d[0] for d in description]
     return dict(zip(cols, row))
@@ -1788,116 +1545,6 @@ def delete_action(action_id, conn):
     if cur.rowcount == 0:
         return jsonify({"detail": "Not found"}), 404
     return jsonify({"status": "deleted"})
-
-
-DB_SCHEMA = """Tables:
-1. memo_log — engineer voice memos and observations
-   Columns: id (bigint PK), logged_at (timestamptz), engineer (text), source_file (text),
-   activity_type (text: 'Action Item','Qualitative Observation','System Maintenance','Performance - Quantitative','Hypothesis','Other'),
-   summary (text), system_performance (text), maintenance_done (text), issues_found (text),
-   action_items (text), components_affected (text), duration_hours (numeric),
-   severity (text: 'Critical','High','Medium','Low','None'), additional_notes (text),
-   raw_transcript (text), trigger_sim_update (boolean)
-
-2. action_items — individual action items parsed from memos
-   Columns: id (bigserial PK), created_at (timestamptz), updated_at (timestamptz),
-   memo_id (bigint, references memo_log.id), engineer (text), action_text (text),
-   status (text: 'Not Started','In Progress','Complete'), responsible (text),
-   due_date (date), notes (text)
-
-3. change_events — component change log for the pump asset model
-   Columns: id (bigserial), effective_time (timestamptz), recorded_time (timestamptz),
-   position (text), removed_part_number (text), installed_part_number (text),
-   changed_by (text), note (text)
-
-4. positions — valid pump component positions
-   Columns: name (text PK), display_name (text), description (text)
-"""
-
-ASK_SYSTEM_PROMPT = f"""You are a SQL assistant for a cryogenic pump test engineering database (PostgreSQL/TimescaleDB).
-
-{DB_SCHEMA}
-
-Rules:
-- Generate ONLY a SELECT or WITH ... SELECT query. Never INSERT, UPDATE, DELETE, DROP, ALTER, or any DDL.
-- Use ILIKE for text searches.
-- LIMIT results to 200 rows max.
-- Return ONLY the raw SQL query, no markdown, no explanation.
-- For date filtering use logged_at for memo_log, created_at for action_items, effective_time for change_events.
-- When asked about "recent" items, order by the appropriate timestamp DESC and LIMIT.
-"""
-
-SUMMARIZE_PROMPT = """You are a helpful assistant for test engineers. Given the user's question and the database query results below, provide a clear, concise answer. Use bullet points or tables where helpful. If no results were returned, say so clearly.
-
-Question: {question}
-
-Results (JSON):
-{results}"""
-
-
-@bp.route("/ask", methods=["POST"])
-@require_db
-def ask_weebo(conn):
-    body = request.get_json() or {}
-    question = (body.get("question") or "").strip()
-    if not question:
-        return jsonify({"detail": "Question is required"}), 400
-
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-    if not api_key:
-        return jsonify({"detail": "ANTHROPIC_API_KEY not configured"}), 500
-
-    try:
-        import anthropic
-        client = anthropic.Anthropic(api_key=api_key)
-
-        sql_msg = client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=1024,
-            system=ASK_SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": question}],
-        )
-        sql = sql_msg.content[0].text.strip()
-        if sql.startswith("```"):
-            sql = sql.split("```")[1]
-            if sql.startswith("sql"):
-                sql = sql[3:]
-            sql = sql.strip()
-
-        sql_upper = sql.strip().upper()
-        if not (sql_upper.startswith("SELECT") or sql_upper.startswith("WITH")):
-            return jsonify({"detail": "Only SELECT queries are allowed", "sql": sql}), 400
-        for forbidden in ["INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "TRUNCATE", "CREATE", "GRANT", "REVOKE"]:
-            if f" {forbidden} " in f" {sql_upper} " or sql_upper.startswith(forbidden):
-                return jsonify({"detail": f"Forbidden SQL operation: {forbidden}", "sql": sql}), 400
-
-        cur = conn.cursor()
-        cur.execute(sql)
-        rows = _dict_rows(cur)
-        results = [_serialize(r) for r in rows[:50]]
-
-        summary_msg = client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=1024,
-            messages=[{
-                "role": "user",
-                "content": SUMMARIZE_PROMPT.format(
-                    question=question,
-                    results=json.dumps(results, default=str),
-                ),
-            }],
-        )
-        answer = summary_msg.content[0].text.strip()
-
-        return jsonify({
-            "answer": answer,
-            "sql": sql,
-            "row_count": len(rows),
-            "results": results,
-        })
-
-    except Exception as e:
-        return jsonify({"detail": str(e)}), 500
 
 
 # ── Assembly Instructions ────────────────────────────────────────────────────

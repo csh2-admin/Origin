@@ -13,16 +13,12 @@ import { RunTest } from "./components/RunTest";
 import { TestHistory } from "./components/TestHistory";
 import { SystemDiagnostics } from "./components/SystemDiagnostics";
 import { Triplex } from "./components/Triplex";
-import { WeeboActions } from "./components/WeeboActions";
-import { WeeboAsk } from "./components/WeeboAsk";
-import { WeeboNewEntry } from "./components/WeeboNewEntry";
-import { WeeboRecords } from "./components/WeeboRecords";
 import { VoiceNote } from "./components/VoiceNote";
 import { DailyLog } from "./components/DailyLog";
 import { WeekLookAhead } from "./components/WeekLookAhead";
 import type { PositionState } from "./types";
 
-type Page = "dashboard" | "how-to" | "asset-model" | "assembly" | "startup" | "shutdown" | "weebo" | "run-test" | "test-history" | "daily-log" | "week-ahead" | "diagnostics" | "voice-note" | "dev-todo";
+type Page = "dashboard" | "how-to" | "asset-model" | "assembly" | "startup" | "shutdown" | "run-test" | "test-history" | "daily-log" | "week-ahead" | "diagnostics" | "voice-note" | "dev-todo";
 
 interface NavItem {
   id: Page;
@@ -40,7 +36,6 @@ const NAV_ITEMS: NavItem[] = [
   { id: "week-ahead", label: "1-Week Look Ahead" },
   { id: "diagnostics", label: "System Diagnostics" },
   { id: "voice-note", label: "Field Notes" },
-  { id: "weebo", label: "Weebo (BETA)" },
   {
     id: "assembly", label: "Documentation",
     children: [
@@ -79,7 +74,6 @@ export function App() {
   const [viewAt, setViewAt] = useState("");
   const [activeHead, setActiveHead] = useState<number | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
-  const [weeboTab, setWeeboTab] = useState<"records" | "new" | "actions" | "ask">("records");
   const [fieldNotesTab, setFieldNotesTab] = useState<"notes" | "actions" | "log-feed">("notes");
   const [unreadCount, setUnreadCount] = useState(0);
   const [unreadReplies, setUnreadReplies] = useState<Reply[]>([]);
@@ -357,24 +351,6 @@ export function App() {
             <SystemDiagnostics />
           ) : page === "voice-note" ? (
             <VoiceNote key={fieldNotesTab} engineer={user!} initialTab={fieldNotesTab} />
-          ) : page === "weebo" ? (
-            <div className="weebo-page">
-              <div className="weebo-tabs">
-                <button className={`weebo-tab${weeboTab === "records" ? " active" : ""}`} onClick={() => setWeeboTab("records")}>Records</button>
-                <button className={`weebo-tab${weeboTab === "new" ? " active" : ""}`} onClick={() => setWeeboTab("new")}>New Entry</button>
-                <button className={`weebo-tab${weeboTab === "actions" ? " active" : ""}`} onClick={() => setWeeboTab("actions")}>Actions</button>
-                <button className={`weebo-tab${weeboTab === "ask" ? " active" : ""}`} onClick={() => setWeeboTab("ask")}>Ask Weebo</button>
-              </div>
-              {weeboTab === "records" ? (
-                <WeeboRecords />
-              ) : weeboTab === "new" ? (
-                <WeeboNewEntry engineer={user!} onSaved={() => setWeeboTab("records")} />
-              ) : weeboTab === "actions" ? (
-                <WeeboActions />
-              ) : (
-                <WeeboAsk />
-              )}
-            </div>
           ) : page === "dev-todo" ? (
             <DevTodo />
           ) : (

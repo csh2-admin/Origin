@@ -205,7 +205,6 @@ export function DailyLog({ engineer }: { engineer: string }) {
   }
 
   const fieldNotes = data?.field_notes.filter((n) => n.source_file === "Field Note" || n.source_file === "Voice Note") ?? [];
-  const weeboMemos = data?.field_notes.filter((n) => n.source_file !== "Field Note" && n.source_file !== "Voice Note") ?? [];
 
   return (
     <div className="daily-log">
@@ -368,26 +367,6 @@ export function DailyLog({ engineer }: { engineer: string }) {
               )}
             </div>
           </div>
-
-          {/* Weebo Memos */}
-          {weeboMemos.length > 0 && (
-            <div className="dash-card" style={{ marginBottom: "1.25rem" }}>
-              <div className="dash-card-header">Weebo Entries ({weeboMemos.length})</div>
-              <div className="dash-card-body">
-                <div className="field-notes-log">
-                  {weeboMemos.map((m) => (
-                    <div key={m.id} className="field-notes-entry">
-                      <div className="field-notes-entry-header">
-                        <strong>{m.engineer}</strong>
-                        <span className="field-notes-entry-time">{fmtTime(m.logged_at)}</span>
-                      </div>
-                      <p className="field-notes-entry-text">{m.summary || m.raw_transcript}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Change Events */}
           {data.change_events.length > 0 && (

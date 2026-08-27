@@ -58,21 +58,9 @@ const SECTIONS = [
     bullets: [
       "Step 1 — Assembly: verifies all positions in the asset model have parts installed",
       "Step 2 — Startup: checklist of pre-test items (power, coolant, leaks, data logging)",
-      "Step 3 — Test: run the test and log observations via Weebo",
+      "Step 3 — Test: run the test and log observations via Field Notes",
       "Step 4 — Shutdown: checklist of post-test items (depressurize, power off, secure)",
       "Notes can be added at any step — they auto-save as you type",
-    ],
-  },
-  {
-    page: "weebo",
-    title: "Weebo",
-    description:
-      "The engineering memo and knowledge system. Record observations, track action items, and query your data using natural language.",
-    bullets: [
-      "Records — browse, filter, edit, and delete engineering memos",
-      "New Entry — record a voice memo, transcribe it with Whisper AI, then use Claude to auto-extract structured fields (activity type, severity, action items, etc.)",
-      "Actions — track action items parsed from memos. Filter by engineer, status, or keyword. Inline editing with status grouping (In Progress / Not Started / Complete)",
-      "Ask Weebo — type a question in plain English and get answers from your database. Weebo generates SQL, runs it, and summarizes the results. You can inspect the SQL and raw data for any response",
     ],
   },
 ];

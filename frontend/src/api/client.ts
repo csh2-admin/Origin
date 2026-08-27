@@ -1,4 +1,4 @@
-import type { ActionItem, AskResponse, AssemblyInstruction, AssemblyRun, AssemblyStepLog, AssemblyVerification, ChangeEvent, ChangePayload, ComponentPhoto, DailyLog, DashboardData, MemoEntry, PartCatalogEntry, PositionLimit, PositionState, TestReport, TestRun, UsageStats } from "../types";
+import type { ActionItem, AssemblyInstruction, AssemblyRun, AssemblyStepLog, AssemblyVerification, ChangeEvent, ChangePayload, ComponentPhoto, DailyLog, DashboardData, PartCatalogEntry, PositionLimit, PositionState, TestReport, TestRun, UsageStats } from "../types";
 
 const BASE = "/api";
 
@@ -166,51 +166,8 @@ export async function getDailyLog(date: string) {
   return request<DailyLog>(`/daily-log?date=${date}`);
 }
 
-export async function getMemos(filters: Record<string, string> = {}) {
-  const qs = new URLSearchParams(filters).toString();
-  return request<MemoEntry[]>(`/memos${qs ? `?${qs}` : ""}`);
-}
-
-export async function updateMemo(id: number, fields: Record<string, unknown>) {
-  return request<MemoEntry>(`/memos/${id}`, {
-    method: "PUT",
-    body: JSON.stringify(fields),
-  });
-}
-
-export async function deleteMemo(id: number) {
-  return request<{ status: string }>(`/memos/${id}`, { method: "DELETE" });
-}
-
 export async function getEngineers() {
   return request<string[]>("/memos/engineers");
-}
-
-
-export async function extractInsights(transcript: string) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 60000);
-  const res = await fetch(`${BASE}/memos/extract`, {
-    method: "POST",
-    credentials: "include",
-    signal: controller.signal,
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ transcript }),
-  });
-  clearTimeout(timeout);
-  if (res.status === 401) throw new Error("UNAUTHORIZED");
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || res.statusText);
-  }
-  return res.json() as Promise<Record<string, unknown>>;
-}
-
-export async function createMemo(fields: Record<string, unknown>) {
-  return request<MemoEntry>("/memos", {
-    method: "POST",
-    body: JSON.stringify(fields),
-  });
 }
 
 export interface FieldNote {
@@ -329,24 +286,6 @@ export async function deleteAction(id: number) {
   return request<{ status: string }>(`/actions/${id}`, { method: "DELETE" });
 }
 
-export async function askWeebo(question: string) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 60000);
-  const res = await fetch(`${BASE}/ask`, {
-    method: "POST",
-    credentials: "include",
-    signal: controller.signal,
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question }),
-  });
-  clearTimeout(timeout);
-  if (res.status === 401) throw new Error("UNAUTHORIZED");
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || res.statusText);
-  }
-  return res.json() as Promise<AskResponse>;
-}
 
 // ── Assembly Instructions ──
 
