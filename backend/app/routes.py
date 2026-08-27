@@ -6,7 +6,7 @@ import tempfile
 import threading
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from urllib.request import Request, urlopen
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic"}
 
 def _serialize(row):
     return {
-        k: (v.isoformat() if isinstance(v, datetime) else v)
+        k: (v.isoformat() if isinstance(v, (datetime, date)) else v)
         for k, v in row.items()
     }
 
