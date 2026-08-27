@@ -1563,6 +1563,7 @@ textarea {
   padding: 0.5rem 1rem;
   border-bottom: 1px solid var(--border);
   color: var(--text-primary);
+  text-align: left;
 }
 
 .test-run-history .data-table .active-row td {
