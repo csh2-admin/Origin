@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { getDailyLog, updateFieldNote, getReplies, createReply } from "../api/client";
+import { getDailyLog, updateFieldNote, deleteFieldNote, getReplies, createReply } from "../api/client";
 import type { Reply } from "../api/client";
 import type { DailyLog as DailyLogData } from "../types";
 import { Lightbox } from "./Lightbox";
 
-const CATEGORIES = ["Action Item", "Assembly Note", "System Maintenance", "Performance", "Other"] as const;
+const CATEGORIES = ["Action Item", "Assembly Note", "Logistics", "System Maintenance", "Performance", "Other"] as const;
 const TEAM_MEMBERS = ["jimmyli", "edwardyoun", "anthonyku", "pjcallahan", "tomtodaro"] as const;
 type Category = typeof CATEGORIES[number];
 
@@ -46,6 +46,7 @@ function CategoryBadge({ category }: { category: string }) {
   const colors: Record<string, string> = {
     "Action Item": "var(--red-600)",
     "Assembly Note": "#b8860b",
+    "Logistics": "#6a5acd",
     "System Maintenance": "var(--accent)",
     "Performance": "var(--green-600)",
     "Other": "var(--text-secondary)",
@@ -129,6 +130,8 @@ export function DailyLog({ engineer }: { engineer: string }) {
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [assigningNote, setAssigningNote] = useState<{ id: number; category: Category } | null>(null);
   const [assignTo, setAssignTo] = useState("");
+  const [editingNote, setEditingNote] = useState<{ id: number; text: string; category: string } | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -164,6 +167,23 @@ export function DailyLog({ engineer }: { engineer: string }) {
     } catch { /* ignore */ }
     setAssigningNote(null);
     setAssignTo("");
+  }
+
+  async function handleEditSave() {
+    if (!editingNote || !editingNote.text.trim()) return;
+    try {
+      await updateFieldNote(editingNote.id, { note: editingNote.text, category: editingNote.category });
+      await load();
+    } catch { /* ignore */ }
+    setEditingNote(null);
+  }
+
+  async function handleDelete(noteId: number) {
+    try {
+      await deleteFieldNote(noteId);
+      await load();
+    } catch { /* ignore */ }
+    setConfirmDeleteId(null);
   }
 
   const fieldNotes = data?.field_notes.filter((n) => n.source_file === "Field Note" || n.source_file === "Voice Note") ?? [];
@@ -298,6 +318,18 @@ export function DailyLog({ engineer }: { engineer: string }) {
                           <button className="btn btn-secondary" style={{ fontSize: "0.75rem", padding: "0.2rem 0.6rem" }} onClick={() => setAssigningNote(null)}>Cancel</button>
                         </div>
                       )}
+                      {/* Edit / Delete */}
+                      <div style={{ display: "flex", gap: "0.4rem", marginTop: "0.4rem" }}>
+                        <button className="btn btn-secondary fn-edit-btn" onClick={() => setEditingNote({ id: n.id, text: n.raw_transcript, category: n.activity_type || "Unprocessed" })}>Edit</button>
+                        {confirmDeleteId === n.id ? (
+                          <>
+                            <button className="btn btn-secondary fn-edit-btn" style={{ color: "var(--red-600)" }} onClick={() => handleDelete(n.id)}>Confirm Delete</button>
+                            <button className="btn btn-secondary fn-edit-btn" onClick={() => setConfirmDeleteId(null)}>Cancel</button>
+                          </>
+                        ) : (
+                          <button className="btn btn-secondary fn-edit-btn" onClick={() => setConfirmDeleteId(n.id)}>Delete</button>
+                        )}
+                      </div>
                       <ReplyThread noteId={n.id} engineer={engineer} replyCount={n.reply_count ?? 0} />
                     </div>
                   ))}
@@ -409,6 +441,41 @@ export function DailyLog({ engineer }: { engineer: string }) {
         </>
       )}
       {lightboxSrc && <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
+      {editingNote && (
+        <div className="fn-modal-overlay" onClick={() => setEditingNote(null)}>
+          <div className="fn-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="fn-modal-header">
+              <h3>Edit Note</h3>
+              <button className="fn-modal-close" onClick={() => setEditingNote(null)}>&times;</button>
+            </div>
+            <div className="fn-modal-body">
+              <label className="fn-modal-label">Note</label>
+              <textarea
+                rows={5}
+                value={editingNote.text}
+                onChange={(e) => setEditingNote({ ...editingNote, text: e.target.value })}
+                className="field-notes-textarea"
+              />
+              <label className="fn-modal-label">Category</label>
+              <div className="fn-category-picker">
+                {CATEGORIES.map((c) => (
+                  <button
+                    key={c}
+                    className={`fn-category-option${editingNote.category === c ? " active" : ""}`}
+                    onClick={() => setEditingNote({ ...editingNote, category: c })}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="fn-modal-footer">
+              <button className="btn btn-primary" onClick={handleEditSave} disabled={!editingNote.text.trim()}>Save</button>
+              <button className="btn btn-secondary" onClick={() => setEditingNote(null)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
