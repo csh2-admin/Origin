@@ -583,6 +583,8 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
         </div>
       </div>
 
+      </>
+      )}
       {editNote && (
         <EditModal
           note={editNote}
@@ -591,8 +593,6 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
         />
       )}
       {lightboxSrc && <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
-      </>
-      )}
     </div>
   );
 }
