@@ -367,6 +367,7 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   });
+  const [feedSearch, setFeedSearch] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
 
@@ -434,7 +435,7 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
       <h2>Field Notes</h2>
       <div className="weebo-tabs" style={{ marginBottom: "1.25rem" }}>
         <button className={`weebo-tab${activeTab === "notes" ? " active" : ""}`} onClick={() => setActiveTab("notes")}>Log Note</button>
-        <button className={`weebo-tab${activeTab === "log-feed" ? " active" : ""}`} onClick={() => setActiveTab("log-feed")}>Log Feed</button>
+        <button className={`weebo-tab${activeTab === "log-feed" ? " active" : ""}`} onClick={() => setActiveTab("log-feed")}>Field Note Feed</button>
         <button className={`weebo-tab${activeTab === "actions" ? " active" : ""}`} onClick={() => setActiveTab("actions")}>Action Items</button>
       </div>
 
@@ -442,8 +443,8 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
         <WeeboActions />
       ) : activeTab === "log-feed" ? (
       <>
-      {/* Date filter */}
-      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1rem", flexWrap: "wrap" }}>
+      {/* Filters */}
+      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.75rem", flexWrap: "wrap" }}>
         <label style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>From</label>
         <input type="date" value={feedFrom} onChange={(e) => setFeedFrom(e.target.value)}
           style={{ padding: "0.3rem 0.5rem", borderRadius: "var(--radius)", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "0.85rem" }} />
@@ -451,20 +452,45 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
         <input type="date" value={feedTo} onChange={(e) => setFeedTo(e.target.value)}
           style={{ padding: "0.3rem 0.5rem", borderRadius: "var(--radius)", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "0.85rem" }} />
       </div>
-      {/* Log Feed */}
+      <div style={{ marginBottom: "1rem" }}>
+        <input type="text" placeholder="Search notes..." value={feedSearch} onChange={(e) => setFeedSearch(e.target.value)}
+          style={{ width: "100%", maxWidth: "400px", padding: "0.4rem 0.6rem", borderRadius: "var(--radius)", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "0.85rem" }} />
+      </div>
+      {/* Field Note Feed */}
       <div className="dash-card">
-        <div className="dash-card-header">Log Feed ({notes.filter((n) => {
+        <div className="dash-card-header">Field Note Feed ({notes.filter((n) => {
           const d = n.logged_at.slice(0, 10);
-          return d >= feedFrom && d <= feedTo;
+          if (d < feedFrom || d > feedTo) return false;
+          if (feedSearch.trim()) {
+            const q = feedSearch.trim().toLowerCase();
+            return (n.raw_transcript?.toLowerCase().includes(q)) || (n.engineer?.toLowerCase().includes(q)) || (n.summary?.toLowerCase().includes(q));
+          }
+          return true;
         }).length})</div>
         <div className="dash-card-body">
           {loadingNotes ? (
             <p className="field-notes-empty">Loading...</p>
-          ) : notes.filter((n) => { const d = n.logged_at.slice(0, 10); return d >= feedFrom && d <= feedTo; }).length === 0 ? (
-            <p className="field-notes-empty">No notes in this date range.</p>
+          ) : notes.filter((n) => {
+            const d = n.logged_at.slice(0, 10);
+            if (d < feedFrom || d > feedTo) return false;
+            if (feedSearch.trim()) {
+              const q = feedSearch.trim().toLowerCase();
+              return (n.raw_transcript?.toLowerCase().includes(q)) || (n.engineer?.toLowerCase().includes(q)) || (n.summary?.toLowerCase().includes(q));
+            }
+            return true;
+          }).length === 0 ? (
+            <p className="field-notes-empty">No notes match your filters.</p>
           ) : (
             <div className="field-notes-log">
-              {notes.filter((n) => { const d = n.logged_at.slice(0, 10); return d >= feedFrom && d <= feedTo; }).map((n) => (
+              {notes.filter((n) => {
+                const d = n.logged_at.slice(0, 10);
+                if (d < feedFrom || d > feedTo) return false;
+                if (feedSearch.trim()) {
+                  const q = feedSearch.trim().toLowerCase();
+                  return (n.raw_transcript?.toLowerCase().includes(q)) || (n.engineer?.toLowerCase().includes(q)) || (n.summary?.toLowerCase().includes(q));
+                }
+                return true;
+              }).map((n) => (
                 <div key={n.id} className="field-notes-entry">
                   <div className="field-notes-entry-header">
                     <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
