@@ -3862,3 +3862,108 @@ textarea {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ---- Week Look Ahead ---- */
+.week-look-ahead {
+  max-width: 1100px;
+}
+
+.week-calendar {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.week-day {
+  background: var(--bg);
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+}
+
+.week-day-today {
+  background: color-mix(in srgb, var(--accent) 5%, var(--bg));
+}
+
+.week-day-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-alt);
+}
+
+.week-day-today .week-day-header {
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface-alt));
+}
+
+.week-day-label {
+  font-weight: 600;
+  font-size: 0.75rem;
+  color: var(--text);
+}
+
+.week-day-today .week-day-label {
+  color: var(--accent);
+}
+
+.week-day-date {
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+}
+
+.week-day-body {
+  padding: 0.35rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  overflow-y: auto;
+}
+
+.week-day-empty {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  text-align: center;
+  margin: auto 0;
+}
+
+.week-action-item {
+  background: var(--surface-alt);
+  border-radius: calc(var(--radius) * 0.6);
+  padding: 0.3rem 0.4rem;
+  border-left: 3px solid var(--accent);
+}
+
+.week-action-text {
+  font-size: 0.75rem;
+  color: var(--text);
+  display: block;
+  line-height: 1.3;
+}
+
+.week-action-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.2rem;
+}
+
+.week-action-owner {
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 768px) {
+  .week-calendar {
+    grid-template-columns: 1fr;
+  }
+  .week-day {
+    min-height: auto;
+  }
+}

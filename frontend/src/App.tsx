@@ -19,9 +19,10 @@ import { WeeboNewEntry } from "./components/WeeboNewEntry";
 import { WeeboRecords } from "./components/WeeboRecords";
 import { VoiceNote } from "./components/VoiceNote";
 import { DailyLog } from "./components/DailyLog";
+import { WeekLookAhead } from "./components/WeekLookAhead";
 import type { PositionState } from "./types";
 
-type Page = "dashboard" | "how-to" | "asset-model" | "assembly" | "startup" | "shutdown" | "weebo" | "run-test" | "test-history" | "daily-log" | "diagnostics" | "voice-note" | "dev-todo";
+type Page = "dashboard" | "how-to" | "asset-model" | "assembly" | "startup" | "shutdown" | "weebo" | "run-test" | "test-history" | "daily-log" | "week-ahead" | "diagnostics" | "voice-note" | "dev-todo";
 
 interface NavItem {
   id: Page;
@@ -36,6 +37,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: "run-test", label: "Run Test" },
   { id: "test-history", label: "Test History" },
   { id: "daily-log", label: "Daily Log" },
+  { id: "week-ahead", label: "Week Look Ahead" },
   { id: "diagnostics", label: "System Diagnostics" },
   { id: "voice-note", label: "Field Notes" },
   { id: "weebo", label: "Weebo (BETA)" },
@@ -343,6 +345,8 @@ export function App() {
             <TestHistory />
           ) : page === "daily-log" ? (
             <DailyLog engineer={user} />
+          ) : page === "week-ahead" ? (
+            <WeekLookAhead />
           ) : page === "assembly" ? (
             <Assembly user={user!} />
           ) : page === "startup" ? (
