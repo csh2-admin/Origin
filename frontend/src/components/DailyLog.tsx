@@ -132,6 +132,7 @@ export function DailyLog({ engineer }: { engineer: string }) {
   const [assignTo, setAssignTo] = useState("");
   const [editingNote, setEditingNote] = useState<{ id: number; text: string; category: string } | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [notesAsc, setNotesAsc] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -263,13 +264,26 @@ export function DailyLog({ engineer }: { engineer: string }) {
 
           {/* Field Notes — tagging / daily review */}
           <div className="dash-card" style={{ marginBottom: "1.25rem" }}>
-            <div className="dash-card-header">Field Notes ({fieldNotes.length})</div>
+            <div className="dash-card-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span>Field Notes ({fieldNotes.length})</span>
+              <button
+                className="btn btn-secondary"
+                style={{ width: "auto", fontSize: "0.7rem", padding: "0.15rem 0.5rem" }}
+                onClick={() => setNotesAsc((v) => !v)}
+                title={notesAsc ? "Oldest first" : "Newest first"}
+              >
+                {notesAsc ? "Oldest ↑" : "Newest ↓"}
+              </button>
+            </div>
             <div className="dash-card-body">
               {fieldNotes.length === 0 ? (
                 <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>No field notes this day.</p>
               ) : (
                 <div className="field-notes-log">
-                  {fieldNotes.map((n) => (
+                  {[...fieldNotes].sort((a, b) => notesAsc
+                    ? new Date(a.logged_at).getTime() - new Date(b.logged_at).getTime()
+                    : new Date(b.logged_at).getTime() - new Date(a.logged_at).getTime()
+                  ).map((n) => (
                     <div key={n.id} className="field-notes-entry">
                       <div className="field-notes-entry-header">
                         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
