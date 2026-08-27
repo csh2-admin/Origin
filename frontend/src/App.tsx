@@ -78,7 +78,7 @@ export function App() {
   const [activeHead, setActiveHead] = useState<number | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const [weeboTab, setWeeboTab] = useState<"records" | "new" | "actions" | "ask">("records");
-  const [fieldNotesTab, setFieldNotesTab] = useState<"notes" | "actions">("notes");
+  const [fieldNotesTab, setFieldNotesTab] = useState<"notes" | "actions" | "log-feed">("notes");
   const [unreadCount, setUnreadCount] = useState(0);
   const [unreadReplies, setUnreadReplies] = useState<Reply[]>([]);
   const [showNotifs, setShowNotifs] = useState(false);

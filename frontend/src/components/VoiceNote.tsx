@@ -350,8 +350,8 @@ function EditModal({ note, onClose, onSaved }: EditModalProps) {
   );
 }
 
-export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string; initialTab?: "notes" | "actions" }) {
-  const [activeTab, setActiveTab] = useState<"notes" | "actions">(initialTab);
+export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string; initialTab?: "notes" | "actions" | "log-feed" }) {
+  const [activeTab, setActiveTab] = useState<"notes" | "actions" | "log-feed">(initialTab);
   const [note, setNote] = useState("");
   const [photos, setPhotos] = useState<File[]>([]);
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
@@ -428,12 +428,55 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
     <div className="field-notes-page">
       <h2>Field Notes</h2>
       <div className="weebo-tabs" style={{ marginBottom: "1.25rem" }}>
-        <button className={`weebo-tab${activeTab === "notes" ? " active" : ""}`} onClick={() => setActiveTab("notes")}>Notes</button>
+        <button className={`weebo-tab${activeTab === "notes" ? " active" : ""}`} onClick={() => setActiveTab("notes")}>Log Note</button>
+        <button className={`weebo-tab${activeTab === "log-feed" ? " active" : ""}`} onClick={() => setActiveTab("log-feed")}>Log Feed</button>
         <button className={`weebo-tab${activeTab === "actions" ? " active" : ""}`} onClick={() => setActiveTab("actions")}>Action Items</button>
       </div>
 
       {activeTab === "actions" ? (
         <WeeboActions />
+      ) : activeTab === "log-feed" ? (
+      <>
+      {/* Log Feed */}
+      <div className="dash-card">
+        <div className="dash-card-header">Log Feed ({notes.length})</div>
+        <div className="dash-card-body">
+          {loadingNotes ? (
+            <p className="field-notes-empty">Loading...</p>
+          ) : notes.length === 0 ? (
+            <p className="field-notes-empty">No notes yet.</p>
+          ) : (
+            <div className="field-notes-log">
+              {notes.map((n) => (
+                <div key={n.id} className="field-notes-entry">
+                  <div className="field-notes-entry-header">
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                      <strong>{n.engineer}</strong>
+                      {n.activity_type && n.activity_type !== "Unprocessed" && n.activity_type !== "Qualitative Observation" && (
+                        <CategoryBadge category={n.activity_type} />
+                      )}
+                    </div>
+                    <span className="field-notes-entry-time">{fmtTime(n.logged_at)}</span>
+                  </div>
+                  <p className="field-notes-entry-text">{n.raw_transcript}</p>
+                  {n.audio_url && (
+                    <div className="field-notes-photo-grid">
+                      {parsePhotos(n.audio_url).map((url, i) => (
+                        <img key={i} src={url} alt={`Photo ${i + 1}`} className="field-notes-entry-photo" onClick={() => setLightboxSrc(url)} />
+                      ))}
+                    </div>
+                  )}
+                  <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.4rem" }}>
+                    <button className="btn btn-secondary fn-edit-btn" onClick={() => setEditNote(n)}>Edit</button>
+                  </div>
+                  <ReplyThread noteId={n.id} engineer={engineer} replyCount={n.reply_count} />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+      </>
       ) : (
       <>
       <p className="field-notes-subtitle">
@@ -493,46 +536,6 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
               Discard
             </button>
           </div>
-        </div>
-      </div>
-
-      {/* Log Feed */}
-      <div className="dash-card">
-        <div className="dash-card-header">Log Feed ({notes.length})</div>
-        <div className="dash-card-body">
-          {loadingNotes ? (
-            <p className="field-notes-empty">Loading...</p>
-          ) : notes.length === 0 ? (
-            <p className="field-notes-empty">No notes yet. Add one above.</p>
-          ) : (
-            <div className="field-notes-log">
-              {notes.map((n) => (
-                <div key={n.id} className="field-notes-entry">
-                  <div className="field-notes-entry-header">
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                      <strong>{n.engineer}</strong>
-                      {n.activity_type && n.activity_type !== "Unprocessed" && n.activity_type !== "Qualitative Observation" && (
-                        <CategoryBadge category={n.activity_type} />
-                      )}
-                    </div>
-                    <span className="field-notes-entry-time">{fmtTime(n.logged_at)}</span>
-                  </div>
-                  <p className="field-notes-entry-text">{n.raw_transcript}</p>
-                  {n.audio_url && (
-                    <div className="field-notes-photo-grid">
-                      {parsePhotos(n.audio_url).map((url, i) => (
-                        <img key={i} src={url} alt={`Photo ${i + 1}`} className="field-notes-entry-photo" onClick={() => setLightboxSrc(url)} />
-                      ))}
-                    </div>
-                  )}
-                  <button className="btn btn-secondary fn-edit-btn" style={{ marginTop: "0.5rem" }} onClick={() => setEditNote(n)}>
-                    Edit
-                  </button>
-                  <ReplyThread noteId={n.id} engineer={engineer} replyCount={n.reply_count ?? 0} />
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </div>
 
