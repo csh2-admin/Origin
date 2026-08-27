@@ -374,6 +374,8 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
   const [activeTab, setActiveTab] = useState<"notes" | "actions" | "log-feed">(initialTab);
   const [note, setNote] = useState("");
   const [newNoteCategory, setNewNoteCategory] = useState("");
+  const [newNoteResponsible, setNewNoteResponsible] = useState("");
+  const [newNoteDueDate, setNewNoteDueDate] = useState("");
   const [photos, setPhotos] = useState<File[]>([]);
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -433,10 +435,12 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
     setSaving(true);
     setError("");
     try {
-      await createFieldNote(note, engineer, photos.length ? photos : undefined, newNoteCategory || undefined);
+      await createFieldNote(note, engineer, photos.length ? photos : undefined, newNoteCategory || undefined, newNoteResponsible || undefined, newNoteDueDate || undefined);
       setSaved(true);
       setNote("");
       setNewNoteCategory("");
+      setNewNoteResponsible("");
+      setNewNoteDueDate("");
       clearPhotos();
       await loadNotes();
     } catch (err) {
@@ -626,6 +630,30 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
                 </button>
               ))}
             </div>
+            {newNoteCategory.includes("Action Item") && (
+              <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+                <div>
+                  <label style={{ fontSize: "0.8rem", color: "var(--text-secondary)", display: "block", marginBottom: "0.2rem" }}>Assign to</label>
+                  <select
+                    value={newNoteResponsible}
+                    onChange={(e) => setNewNoteResponsible(e.target.value)}
+                    style={{ padding: "0.3rem 0.5rem", borderRadius: "var(--radius)", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "0.85rem" }}
+                  >
+                    <option value="">Select...</option>
+                    {TEAM_MEMBERS.map((m) => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: "0.8rem", color: "var(--text-secondary)", display: "block", marginBottom: "0.2rem" }}>Due date</label>
+                  <input
+                    type="date"
+                    value={newNoteDueDate}
+                    onChange={(e) => setNewNoteDueDate(e.target.value)}
+                    style={{ padding: "0.3rem 0.5rem", borderRadius: "var(--radius)", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "0.85rem" }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
           <div className="field-notes-actions">
             <button className="btn btn-primary field-notes-save-btn" onClick={handleSave} disabled={saving || !note.trim()}>

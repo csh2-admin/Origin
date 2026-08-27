@@ -195,11 +195,13 @@ export interface UnreadNotifications {
   replies: Reply[];
 }
 
-export async function createFieldNote(note: string, engineer: string, photos?: File[], category?: string) {
+export async function createFieldNote(note: string, engineer: string, photos?: File[], category?: string, responsible?: string, due_date?: string) {
   const form = new FormData();
   form.append("note", note);
   form.append("engineer", engineer);
   if (category) form.append("category", category);
+  if (responsible) form.append("responsible", responsible);
+  if (due_date) form.append("due_date", due_date);
   if (photos) photos.forEach((p) => form.append("photos", p));
   const res = await fetch(`${BASE}/field-notes`, {
     method: "POST",

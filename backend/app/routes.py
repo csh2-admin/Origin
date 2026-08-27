@@ -1115,6 +1115,8 @@ def create_field_note(conn):
     note = request.form.get("note", "").strip()
     engineer = request.form.get("engineer", "")
     category = request.form.get("category", "").strip() or "Unprocessed"
+    responsible = request.form.get("responsible", "").strip()
+    due_date = request.form.get("due_date", "").strip() or None
     if not note:
         return jsonify({"detail": "Note text is required"}), 400
 
@@ -1151,6 +1153,18 @@ def create_field_note(conn):
         ),
     )
     row = _dict_row(cur)
+
+    tags = [t.strip() for t in category.split(",") if t.strip()] if category else []
+    if "Action Item" in tags:
+        memo_id = row.get("id")
+        cur.execute(
+            """
+            INSERT INTO action_items (engineer, action_text, status, responsible, due_date, memo_id, created_at, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, NOW(), NOW())
+            """,
+            (engineer, note, "Not Started", responsible or engineer, due_date, memo_id),
+        )
+
     conn.commit()
     return jsonify(_serialize(row)), 201
 
