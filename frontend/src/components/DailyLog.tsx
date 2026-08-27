@@ -358,35 +358,6 @@ export function DailyLog({ engineer }: { engineer: string }) {
             </div>
           )}
 
-          {/* Action Items Created */}
-          {data.action_items.length > 0 && (
-            <div className="dash-card" style={{ marginBottom: "1.25rem" }}>
-              <div className="dash-card-header">Action Items Created ({data.action_items.length})</div>
-              <div className="dash-card-body">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Action</th>
-                      <th>Responsible</th>
-                      <th>Status</th>
-                      <th>Due Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.action_items.map((a) => (
-                      <tr key={a.id}>
-                        <td>{a.action_text}</td>
-                        <td>{a.responsible || "—"}</td>
-                        <td>{a.status || "—"}</td>
-                        <td>{a.due_date || "—"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
           {/* Change Events */}
           {data.change_events.length > 0 && (
             <div className="dash-card" style={{ marginBottom: "1.25rem" }}>
