@@ -68,6 +68,11 @@ function fmtTime(iso: string): string {
   });
 }
 
+function parseTags(activityType: string | null): string[] {
+  if (!activityType || activityType === "Unprocessed") return [];
+  return activityType.split(",").map((t) => t.trim()).filter(Boolean);
+}
+
 function CategoryBadge({ category }: { category: string }) {
   const colors: Record<string, string> = {
     "Action Item": "var(--red-600)",
@@ -199,7 +204,7 @@ function EditModal({ note, onClose, onSaved }: EditModalProps) {
         {
           note: text,
           category,
-          responsible: category === "Action Item" ? (responsible.trim() || undefined) : undefined,
+          responsible: parseTags(category).includes("Action Item") ? (responsible.trim() || undefined) : undefined,
           existing_photos: existingPhotos,
         },
         newPhotos.length ? newPhotos : undefined,
@@ -247,15 +252,21 @@ function EditModal({ note, onClose, onSaved }: EditModalProps) {
             {CATEGORIES.map((c) => (
               <button
                 key={c}
-                className={`fn-category-option${category === c ? " active" : ""}`}
-                onClick={() => setCategory(c)}
+                className={`fn-category-option${parseTags(category).includes(c) ? " active" : ""}`}
+                onClick={() => {
+                  const tags = parseTags(category);
+                  const idx = tags.indexOf(c);
+                  if (idx >= 0) tags.splice(idx, 1);
+                  else tags.push(c);
+                  setCategory(tags.length === 0 ? "Unprocessed" : tags.join(","));
+                }}
               >
                 {c}
               </button>
             ))}
           </div>
 
-          {category === "Action Item" && (
+          {parseTags(category).includes("Action Item") && (
             <>
               <label className="fn-modal-label">Assign To</label>
               <select
@@ -496,9 +507,9 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
                   <div className="field-notes-entry-header">
                     <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                       <strong>{n.engineer}</strong>
-                      {n.activity_type && n.activity_type !== "Unprocessed" && n.activity_type !== "Qualitative Observation" && (
-                        <CategoryBadge category={n.activity_type} />
-                      )}
+                      {parseTags(n.activity_type).filter((t) => t !== "Qualitative Observation").map((tag) => (
+                        <CategoryBadge key={tag} category={tag} />
+                      ))}
                     </div>
                     <span className="field-notes-entry-time">{fmtTime(n.logged_at)}</span>
                   </div>

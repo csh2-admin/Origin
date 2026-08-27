@@ -42,6 +42,19 @@ function todayStr(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+function parseTags(activityType: string | null): string[] {
+  if (!activityType || activityType === "Unprocessed") return [];
+  return activityType.split(",").map((t) => t.trim()).filter(Boolean);
+}
+
+function toggleTag(current: string | null, tag: string): string {
+  const tags = parseTags(current);
+  const idx = tags.indexOf(tag);
+  if (idx >= 0) tags.splice(idx, 1);
+  else tags.push(tag);
+  return tags.length === 0 ? "Unprocessed" : tags.join(",");
+}
+
 function CategoryBadge({ category }: { category: string }) {
   const colors: Record<string, string> = {
     "Action Item": "var(--red-600)",
@@ -128,7 +141,7 @@ export function DailyLog({ engineer }: { engineer: string }) {
   const [data, setData] = useState<DailyLogData | null>(null);
   const [loading, setLoading] = useState(true);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
-  const [assigningNote, setAssigningNote] = useState<{ id: number; category: Category } | null>(null);
+  const [assigningNote, setAssigningNote] = useState<{ id: number; category: Category; currentType: string } | null>(null);
   const [assignTo, setAssignTo] = useState("");
   const [editingNote, setEditingNote] = useState<{ id: number; text: string; category: string } | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
@@ -145,30 +158,27 @@ export function DailyLog({ engineer }: { engineer: string }) {
 
   useEffect(() => { load(); }, [load]);
 
-  async function handleCategorize(noteId: number, category: Category, currentCategory: string) {
-    if (category === currentCategory) {
-      try {
-        await updateFieldNote(noteId, { category: "Unprocessed" });
-        await load();
-      } catch { /* ignore */ }
-      return;
-    }
-    if (category === "Action Item") {
-      setAssigningNote({ id: noteId, category });
+  async function handleCategorize(noteId: number, category: Category, currentActivityType: string) {
+    const currentTags = parseTags(currentActivityType);
+    const isAdding = !currentTags.includes(category);
+    if (isAdding && category === "Action Item") {
+      setAssigningNote({ id: noteId, category, currentType: currentActivityType });
       setAssignTo("");
       return;
     }
+    const newValue = toggleTag(currentActivityType, category);
     try {
-      await updateFieldNote(noteId, { category });
+      await updateFieldNote(noteId, { category: newValue });
       await load();
     } catch { /* ignore */ }
   }
 
   async function handleAssignSubmit() {
     if (!assigningNote) return;
+    const newValue = toggleTag(assigningNote.currentType, assigningNote.category);
     try {
       await updateFieldNote(assigningNote.id, {
-        category: assigningNote.category,
+        category: newValue,
         responsible: assignTo.trim() || undefined,
       });
       await load();
@@ -295,9 +305,9 @@ export function DailyLog({ engineer }: { engineer: string }) {
                       <div className="field-notes-entry-header">
                         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                           <strong>{n.engineer}</strong>
-                          {n.activity_type && n.activity_type !== "Unprocessed" && (
-                            <CategoryBadge category={n.activity_type} />
-                          )}
+                          {parseTags(n.activity_type).map((tag) => (
+                            <CategoryBadge key={tag} category={tag} />
+                          ))}
                         </div>
                         <span className="field-notes-entry-time">{fmtTime(n.logged_at)}</span>
                       </div>
@@ -314,7 +324,7 @@ export function DailyLog({ engineer }: { engineer: string }) {
                         {CATEGORIES.map((cat) => (
                           <button
                             key={cat}
-                            className={`btn btn-secondary fn-sort-btn${n.activity_type === cat ? " active" : ""}`}
+                            className={`btn btn-secondary fn-sort-btn${parseTags(n.activity_type).includes(cat) ? " active" : ""}`}
                             style={{ fontSize: "0.7rem", padding: "0.15rem 0.5rem" }}
                             onClick={() => handleCategorize(n.id, cat, n.activity_type || "Unprocessed")}
                           >
@@ -453,8 +463,8 @@ export function DailyLog({ engineer }: { engineer: string }) {
                 {CATEGORIES.map((c) => (
                   <button
                     key={c}
-                    className={`fn-category-option${editingNote.category === c ? " active" : ""}`}
-                    onClick={() => setEditingNote({ ...editingNote, category: c })}
+                    className={`fn-category-option${parseTags(editingNote.category).includes(c) ? " active" : ""}`}
+                    onClick={() => setEditingNote({ ...editingNote, category: toggleTag(editingNote.category, c) })}
                   >
                     {c}
                   </button>
