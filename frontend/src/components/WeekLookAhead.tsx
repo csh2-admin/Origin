@@ -7,7 +7,7 @@ import { Lightbox } from "./Lightbox";
 
 const SHORT_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-const CATEGORIES = ["Action Item", "Assembly Note", "Logistics", "System Maintenance", "Performance", "Other"] as const;
+const CATEGORIES = ["Action Item", "Assembly Note", "Logistics", "Maintenance", "Performance", "Other"] as const;
 const TEAM_MEMBERS = ["jimmyli", "edwardyoun", "anthonyku", "pjcallahan", "tomtodaro"] as const;
 type Category = typeof CATEGORIES[number];
 
@@ -83,7 +83,7 @@ function CategoryBadge({ category }: { category: string }) {
     "Action Item": "var(--red-600)",
     "Assembly Note": "#b8860b",
     "Logistics": "#6a5acd",
-    "System Maintenance": "var(--accent)",
+    "Maintenance": "var(--accent)",
     "Performance": "var(--green-600)",
     "Other": "var(--text-secondary)",
     "Unprocessed": "var(--text-secondary)",

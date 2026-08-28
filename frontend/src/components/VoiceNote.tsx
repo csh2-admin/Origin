@@ -4,7 +4,7 @@ import type { FieldNote, Reply } from "../api/client";
 import { Lightbox } from "./Lightbox";
 import { WeeboActions } from "./WeeboActions";
 
-const CATEGORIES = ["Action Item", "Assembly Note", "Logistics", "System Maintenance", "Performance", "Other"] as const;
+const CATEGORIES = ["Action Item", "Assembly Note", "Logistics", "Maintenance", "Performance", "Other"] as const;
 const TEAM_MEMBERS = ["jimmyli", "edwardyoun", "anthonyku", "pjcallahan", "tomtodaro"] as const;
 
 function parsePhotos(audioUrl: string | null): string[] {
@@ -86,7 +86,7 @@ function CategoryBadge({ category }: { category: string }) {
     "Action Item": "var(--red-600)",
     "Assembly Note": "#b8860b",
     "Logistics": "#6a5acd",
-    "System Maintenance": "var(--accent)",
+    "Maintenance": "var(--accent)",
     "Performance": "var(--green-600)",
     "Other": "var(--text-secondary)",
   };
@@ -391,6 +391,7 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   });
   const [feedSearch, setFeedSearch] = useState("");
+  const [feedCategories, setFeedCategories] = useState<Set<string>>(new Set());
   const fileInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
 
@@ -456,6 +457,22 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
     setSaved(false);
   }
 
+  const filteredFeedNotes = notes.filter((n) => {
+    const d = n.logged_at.slice(0, 10);
+    if (d < feedFrom || d > feedTo) return false;
+    if (feedSearch.trim()) {
+      const q = feedSearch.trim().toLowerCase();
+      if (!(n.raw_transcript?.toLowerCase().includes(q)) && !(n.engineer?.toLowerCase().includes(q)) && !(n.summary?.toLowerCase().includes(q))) return false;
+    }
+    if (feedCategories.size > 0) {
+      const tags = parseTags(n.activity_type);
+      const isUntagged = tags.length === 0;
+      if (isUntagged) return feedCategories.has("Untagged");
+      return tags.some((t) => feedCategories.has(t));
+    }
+    return true;
+  });
+
   return (
     <div className="field-notes-page">
       <h2>Field Notes</h2>
@@ -478,45 +495,43 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
         <input type="date" value={feedTo} onChange={(e) => setFeedTo(e.target.value)}
           style={{ padding: "0.3rem 0.5rem", borderRadius: "var(--radius)", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "0.85rem" }} />
       </div>
-      <div style={{ marginBottom: "1rem" }}>
+      <div style={{ marginBottom: "0.5rem" }}>
         <input type="text" placeholder="Search notes..." value={feedSearch} onChange={(e) => setFeedSearch(e.target.value)}
           style={{ width: "100%", maxWidth: "400px", padding: "0.4rem 0.6rem", borderRadius: "var(--radius)", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "0.85rem" }} />
       </div>
+      <div style={{ display: "flex", gap: "0.35rem", marginBottom: "1rem", flexWrap: "wrap" }}>
+        {[...CATEGORIES, "Untagged" as const].map((cat) => {
+          const isActive = feedCategories.has(cat);
+          return (
+            <button
+              key={cat}
+              className={`fn-sort-btn${isActive ? " active" : ""}`}
+              onClick={() => setFeedCategories((prev) => {
+                const next = new Set(prev);
+                if (next.has(cat)) next.delete(cat);
+                else next.add(cat);
+                return next;
+              })}
+            >
+              {cat}
+            </button>
+          );
+        })}
+        {feedCategories.size > 0 && (
+          <button className="fn-sort-btn" onClick={() => setFeedCategories(new Set())} style={{ fontStyle: "italic" }}>Clear</button>
+        )}
+      </div>
       {/* Field Note Feed */}
       <div className="dash-card">
-        <div className="dash-card-header">Field Note Feed ({notes.filter((n) => {
-          const d = n.logged_at.slice(0, 10);
-          if (d < feedFrom || d > feedTo) return false;
-          if (feedSearch.trim()) {
-            const q = feedSearch.trim().toLowerCase();
-            return (n.raw_transcript?.toLowerCase().includes(q)) || (n.engineer?.toLowerCase().includes(q)) || (n.summary?.toLowerCase().includes(q));
-          }
-          return true;
-        }).length})</div>
+        <div className="dash-card-header">Field Note Feed ({filteredFeedNotes.length})</div>
         <div className="dash-card-body">
           {loadingNotes ? (
             <p className="field-notes-empty">Loading...</p>
-          ) : notes.filter((n) => {
-            const d = n.logged_at.slice(0, 10);
-            if (d < feedFrom || d > feedTo) return false;
-            if (feedSearch.trim()) {
-              const q = feedSearch.trim().toLowerCase();
-              return (n.raw_transcript?.toLowerCase().includes(q)) || (n.engineer?.toLowerCase().includes(q)) || (n.summary?.toLowerCase().includes(q));
-            }
-            return true;
-          }).length === 0 ? (
+          ) : filteredFeedNotes.length === 0 ? (
             <p className="field-notes-empty">No notes match your filters.</p>
           ) : (
             <div className="field-notes-log">
-              {notes.filter((n) => {
-                const d = n.logged_at.slice(0, 10);
-                if (d < feedFrom || d > feedTo) return false;
-                if (feedSearch.trim()) {
-                  const q = feedSearch.trim().toLowerCase();
-                  return (n.raw_transcript?.toLowerCase().includes(q)) || (n.engineer?.toLowerCase().includes(q)) || (n.summary?.toLowerCase().includes(q));
-                }
-                return true;
-              }).map((n) => (
+              {filteredFeedNotes.map((n) => (
                 <div key={n.id} className="field-notes-entry">
                   <div className="field-notes-entry-header">
                     <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
@@ -564,8 +579,8 @@ export function VoiceNote({ engineer, initialTab = "notes" }: { engineer: string
           )}
         </div>
       </div>
-      </>
-      ) : (
+      </>)
+      : (
       <>
       <p className="field-notes-subtitle">
         Log observations, notes, and photos from the field.

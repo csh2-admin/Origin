@@ -28,12 +28,12 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { id: "dashboard", label: "Dashboard" },
+  { id: "voice-note", label: "Field Notes" },
+  { id: "week-ahead", label: "1-Week Look Ahead" },
   { id: "asset-model", label: "Asset Model" },
   { id: "run-test", label: "Run Test" },
   { id: "test-history", label: "Test History" },
-  { id: "week-ahead", label: "1-Week Look Ahead" },
   { id: "diagnostics", label: "System Diagnostics" },
-  { id: "voice-note", label: "Field Notes" },
   {
     id: "assembly", label: "Documentation",
     children: [
