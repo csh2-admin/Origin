@@ -1473,9 +1473,13 @@ def list_actions(conn):
     engineer = request.args.get("engineer", "").strip()
     status = request.args.get("status", "").strip()
     search = request.args.get("search", "").strip()
+    memo_id = request.args.get("memo_id", "").strip()
     if engineer:
         conditions.append("engineer = %s")
         params.append(engineer)
+    if memo_id:
+        conditions.append("memo_id = %s")
+        params.append(int(memo_id))
     if status:
         conditions.append("status = %s")
         params.append(status)

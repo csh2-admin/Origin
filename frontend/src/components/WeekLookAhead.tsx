@@ -202,7 +202,7 @@ export function WeekLookAhead({ engineer }: { engineer: string }) {
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [assigningNote, setAssigningNote] = useState<{ id: number; category: Category; currentType: string } | null>(null);
   const [assignTo, setAssignTo] = useState("");
-  const [editingNote, setEditingNote] = useState<{ id: number; text: string; category: string } | null>(null);
+  const [editingNote, setEditingNote] = useState<{ id: number; text: string; category: string; actionItem?: ActionItem | null; actionStatus: string; actionResponsible: string; actionDueDate: string; actionNotes: string } | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [notesAsc, setNotesAsc] = useState(true);
   const [completingAction, setCompletingAction] = useState<ActionItem | null>(null);
@@ -278,10 +278,37 @@ export function WeekLookAhead({ engineer }: { engineer: string }) {
     setAssignTo("");
   }
 
+  async function openEditNote(n: { id: number; raw_transcript: string; activity_type: string }) {
+    const base = { id: n.id, text: n.raw_transcript, category: n.activity_type || "Unprocessed", actionItem: null as ActionItem | null, actionStatus: "Not Started", actionResponsible: "", actionDueDate: "", actionNotes: "" };
+    if (parseTags(n.activity_type).includes("Action Item")) {
+      try {
+        const items = await getActions({ memo_id: String(n.id) });
+        if (items.length > 0) {
+          const ai = items[0];
+          base.actionItem = ai;
+          base.actionStatus = ai.status;
+          base.actionResponsible = ai.responsible || "";
+          base.actionDueDate = ai.due_date || "";
+          base.actionNotes = ai.notes || "";
+        }
+      } catch { /* ignore */ }
+    }
+    setEditingNote(base);
+  }
+
   async function handleEditSave() {
     if (!editingNote || !editingNote.text.trim()) return;
     try {
-      await updateFieldNote(editingNote.id, { note: editingNote.text, category: editingNote.category });
+      await updateFieldNote(editingNote.id, { note: editingNote.text, category: editingNote.category, responsible: parseTags(editingNote.category).includes("Action Item") ? (editingNote.actionResponsible || undefined) : undefined });
+      if (parseTags(editingNote.category).includes("Action Item") && editingNote.actionItem) {
+        await updateAction(editingNote.actionItem.id, {
+          action_text: editingNote.text,
+          status: editingNote.actionStatus,
+          responsible: editingNote.actionResponsible || null,
+          due_date: editingNote.actionDueDate || null,
+          notes: editingNote.actionNotes || null,
+        });
+      }
       await loadDailyLog();
     } catch { /* ignore */ }
     setEditingNote(null);
@@ -658,7 +685,7 @@ export function WeekLookAhead({ engineer }: { engineer: string }) {
                             )}
                             {/* Edit / Delete */}
                             <div style={{ display: "flex", gap: "0.4rem", marginTop: "0.4rem" }}>
-                              <button className="btn btn-secondary fn-edit-btn" onClick={() => setEditingNote({ id: n.id, text: n.raw_transcript, category: n.activity_type || "Unprocessed" })}>Edit</button>
+                              <button className="btn btn-secondary fn-edit-btn" onClick={() => openEditNote(n)}>Edit</button>
                               {confirmDeleteId === n.id ? (
                                 <>
                                   <button className="btn btn-secondary fn-edit-btn" style={{ color: "var(--red-600)" }} onClick={() => handleDelete(n.id)}>Confirm Delete</button>
@@ -734,6 +761,40 @@ export function WeekLookAhead({ engineer }: { engineer: string }) {
                   </button>
                 ))}
               </div>
+              {parseTags(editingNote.category).includes("Action Item") && (
+                <div style={{ background: "var(--surface-alt)", borderRadius: "var(--radius)", padding: "0.75rem", marginTop: "0.5rem" }}>
+                  <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "0.5rem" }}>Action Item Details</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
+                    <div>
+                      <label className="fn-modal-label" style={{ marginBottom: "0.2rem" }}>Status</label>
+                      <select value={editingNote.actionStatus} onChange={(e) => setEditingNote({ ...editingNote, actionStatus: e.target.value })}
+                        style={{ width: "100%", padding: "0.4rem 0.6rem", borderRadius: "var(--radius)", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)" }}>
+                        <option value="Not Started">Not Started</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Complete">Complete</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="fn-modal-label" style={{ marginBottom: "0.2rem" }}>Responsible</label>
+                      <select value={editingNote.actionResponsible} onChange={(e) => setEditingNote({ ...editingNote, actionResponsible: e.target.value })}
+                        style={{ width: "100%", padding: "0.4rem 0.6rem", borderRadius: "var(--radius)", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)" }}>
+                        <option value="">Select...</option>
+                        {TEAM_MEMBERS.map((m) => <option key={m} value={m}>{m}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="fn-modal-label" style={{ marginBottom: "0.2rem" }}>Due Date</label>
+                      <input type="date" value={editingNote.actionDueDate} onChange={(e) => setEditingNote({ ...editingNote, actionDueDate: e.target.value })}
+                        style={{ width: "100%", padding: "0.4rem 0.6rem", borderRadius: "var(--radius)", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)" }} />
+                    </div>
+                  </div>
+                  <div style={{ marginTop: "0.5rem" }}>
+                    <label className="fn-modal-label" style={{ marginBottom: "0.2rem" }}>Notes</label>
+                    <textarea rows={2} value={editingNote.actionNotes} onChange={(e) => setEditingNote({ ...editingNote, actionNotes: e.target.value })}
+                      className="field-notes-textarea" placeholder="Action item notes..." />
+                  </div>
+                </div>
+              )}
             </div>
             <div className="fn-modal-footer">
               <button className="btn btn-primary" onClick={handleEditSave} disabled={!editingNote.text.trim()}>Save</button>

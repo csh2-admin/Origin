@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { createFieldNote, getFieldNotes, updateFieldNote, deleteFieldNote, getReplies, createReply } from "../api/client";
+import { createFieldNote, getFieldNotes, updateFieldNote, deleteFieldNote, getReplies, createReply, getActions, updateAction } from "../api/client";
 import type { FieldNote, Reply } from "../api/client";
+import type { ActionItem } from "../types";
 import { Lightbox } from "./Lightbox";
 import { WeeboActions } from "./WeeboActions";
 
@@ -188,6 +189,29 @@ function EditModal({ note, onClose, onSaved }: EditModalProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
+  const [actionItem, setActionItem] = useState<ActionItem | null>(null);
+  const [actionStatus, setActionStatus] = useState<string>("Not Started");
+  const [actionDueDate, setActionDueDate] = useState("");
+  const [actionNotes, setActionNotes] = useState("");
+  const [actionLoaded, setActionLoaded] = useState(false);
+
+  useEffect(() => {
+    if (parseTags(note.activity_type).includes("Action Item")) {
+      getActions({ memo_id: String(note.id) }).then((items) => {
+        if (items.length > 0) {
+          const ai = items[0];
+          setActionItem(ai);
+          setResponsible(ai.responsible || "");
+          setActionStatus(ai.status);
+          setActionDueDate(ai.due_date || "");
+          setActionNotes(ai.notes || "");
+        }
+        setActionLoaded(true);
+      }).catch(() => setActionLoaded(true));
+    } else {
+      setActionLoaded(true);
+    }
+  }, [note.id, note.activity_type]);
 
   const totalPhotos = existingPhotos.length + newPhotos.length;
 
@@ -217,6 +241,15 @@ function EditModal({ note, onClose, onSaved }: EditModalProps) {
         },
         newPhotos.length ? newPhotos : undefined,
       );
+      if (parseTags(category).includes("Action Item") && actionItem) {
+        await updateAction(actionItem.id, {
+          action_text: text,
+          status: actionStatus,
+          responsible: responsible.trim() || null,
+          due_date: actionDueDate || null,
+          notes: actionNotes || null,
+        });
+      }
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Save failed");
@@ -274,18 +307,54 @@ function EditModal({ note, onClose, onSaved }: EditModalProps) {
             ))}
           </div>
 
-          {parseTags(category).includes("Action Item") && (
-            <>
-              <label className="fn-modal-label">Assign To</label>
-              <select
-                value={responsible}
-                onChange={(e) => setResponsible(e.target.value)}
-                style={{ width: "100%", padding: "0.4rem 0.6rem", borderRadius: "var(--radius)", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", marginBottom: "0.75rem" }}
-              >
-                <option value="">Select...</option>
-                {TEAM_MEMBERS.map((m) => <option key={m} value={m}>{m}</option>)}
-              </select>
-            </>
+          {parseTags(category).includes("Action Item") && actionLoaded && (
+            <div style={{ background: "var(--surface-alt)", borderRadius: "var(--radius)", padding: "0.75rem", marginTop: "0.5rem", marginBottom: "0.5rem" }}>
+              <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "0.5rem" }}>Action Item Details</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
+                <div>
+                  <label className="fn-modal-label" style={{ marginBottom: "0.2rem" }}>Status</label>
+                  <select
+                    value={actionStatus}
+                    onChange={(e) => setActionStatus(e.target.value)}
+                    style={{ width: "100%", padding: "0.4rem 0.6rem", borderRadius: "var(--radius)", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)" }}
+                  >
+                    <option value="Not Started">Not Started</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Complete">Complete</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="fn-modal-label" style={{ marginBottom: "0.2rem" }}>Responsible</label>
+                  <select
+                    value={responsible}
+                    onChange={(e) => setResponsible(e.target.value)}
+                    style={{ width: "100%", padding: "0.4rem 0.6rem", borderRadius: "var(--radius)", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)" }}
+                  >
+                    <option value="">Select...</option>
+                    {TEAM_MEMBERS.map((m) => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="fn-modal-label" style={{ marginBottom: "0.2rem" }}>Due Date</label>
+                  <input
+                    type="date"
+                    value={actionDueDate}
+                    onChange={(e) => setActionDueDate(e.target.value)}
+                    style={{ width: "100%", padding: "0.4rem 0.6rem", borderRadius: "var(--radius)", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)" }}
+                  />
+                </div>
+              </div>
+              <div style={{ marginTop: "0.5rem" }}>
+                <label className="fn-modal-label" style={{ marginBottom: "0.2rem" }}>Notes</label>
+                <textarea
+                  rows={2}
+                  value={actionNotes}
+                  onChange={(e) => setActionNotes(e.target.value)}
+                  className="field-notes-textarea"
+                  placeholder="Action item notes..."
+                />
+              </div>
+            </div>
           )}
 
           <label className="fn-modal-label">Photos ({totalPhotos}/4)</label>
