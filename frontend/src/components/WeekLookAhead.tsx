@@ -331,7 +331,6 @@ export function WeekLookAhead({ engineer }: { engineer: string }) {
   const openActions = actions.filter((a) => a.status !== "Complete");
   const noDueDate = openActions.filter((a) => !a.due_date);
 
-  const isToday = fmtDate(startDate) === today;
 
   function shiftDays(n: number) {
     setStartDate(new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + n));
