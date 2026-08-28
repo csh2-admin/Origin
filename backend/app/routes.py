@@ -1461,7 +1461,7 @@ def _dict_row_from(description, row):
     return dict(zip(cols, row))
 
 
-ACTION_COLUMNS = "id, created_at, updated_at, memo_id, engineer, action_text, status, responsible, due_date, notes"
+ACTION_COLUMNS = "id, created_at, updated_at, memo_id, engineer, action_text, status, responsible, due_date, notes, completed_by, completed_at"
 
 
 @bp.route("/actions", methods=["GET"])
@@ -1536,6 +1536,13 @@ def update_action(action_id, conn):
             params.append(val)
     if not sets:
         return jsonify({"detail": "No fields to update"}), 400
+    if body.get("status") == "Complete":
+        sets.append("completed_by = %s")
+        params.append(body.get("completed_by", session.get("user", "")))
+        sets.append("completed_at = NOW()")
+    elif "status" in body and body["status"] != "Complete":
+        sets.append("completed_by = NULL")
+        sets.append("completed_at = NULL")
     sets.append("updated_at = NOW()")
     params.append(action_id)
     cur = conn.cursor()

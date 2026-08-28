@@ -216,6 +216,7 @@ export function WeekLookAhead({ engineer }: { engineer: string }) {
       await updateAction(completingAction.id, {
         status: "Complete",
         notes: completeNote.trim() || completingAction.notes || "",
+        completed_by: engineer,
       });
       setActions((prev) => prev.map((a) => a.id === completingAction.id ? { ...a, status: "Complete" as const, notes: completeNote.trim() || a.notes } : a));
     } catch { /* ignore */ }

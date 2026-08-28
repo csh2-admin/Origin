@@ -119,6 +119,8 @@ export interface ActionItem {
   responsible: string | null;
   due_date: string | null;
   notes: string | null;
+  completed_by: string | null;
+  completed_at: string | null;
 }
 
 export interface AskResponse {

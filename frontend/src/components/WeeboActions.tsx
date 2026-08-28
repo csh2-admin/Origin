@@ -224,6 +224,7 @@ export function WeeboActions() {
                         {item.responsible && <span>Responsible: {item.responsible}</span>}
                         {item.due_date && <span>Due: {new Date(item.due_date).toLocaleDateString()}</span>}
                         <span>Created: {new Date(item.created_at).toLocaleDateString()}</span>
+                        {item.completed_by && <span>Completed by {item.completed_by}{item.completed_at ? ` on ${new Date(item.completed_at).toLocaleDateString()}` : ""}</span>}
                       </div>
                       {item.notes && <div className="wa-item-notes">{item.notes}</div>}
                       <div className="wa-item-actions">
