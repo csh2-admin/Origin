@@ -15,7 +15,7 @@ from flask import Blueprint, current_app, jsonify, make_response, request
 from PIL import Image
 from pillow_heif import register_heif_opener
 
-from .database import create_session, delete_session, require_db, _dict_row, _dict_rows
+from .database import create_session, delete_session, require_db, _dict_row, _dict_rows, _sessions
 
 register_heif_opener()
 
@@ -1542,7 +1542,9 @@ def update_action(action_id, conn):
         return jsonify({"detail": "No fields to update"}), 400
     if body.get("status") == "Complete":
         sets.append("completed_by = %s")
-        params.append(body.get("completed_by", session.get("user", "")))
+        sid = request.cookies.get("session_id", "")
+        current_user = _sessions.get(sid, {}).get("username", "")
+        params.append(body.get("completed_by", current_user))
         sets.append("completed_at = NOW()")
     elif "status" in body and body["status"] != "Complete":
         sets.append("completed_by = NULL")
