@@ -16,6 +16,8 @@ export function WeeboActions() {
   const [saving, setSaving] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [newItem, setNewItem] = useState({ action_text: "", responsible: "", due_date: "", notes: "" });
+  const [completingItem, setCompletingItem] = useState<ActionItem | null>(null);
+  const [completeNote, setCompleteNote] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -45,6 +47,21 @@ export function WeeboActions() {
         action_text: editing.action_text,
       });
       setEditing(null);
+      load();
+    } catch { /* ignore */ }
+    setSaving(false);
+  }
+
+  async function handleComplete() {
+    if (!completingItem) return;
+    setSaving(true);
+    try {
+      await updateAction(completingItem.id, {
+        status: "Complete",
+        notes: completeNote.trim() || completingItem.notes || "",
+      });
+      setCompletingItem(null);
+      setCompleteNote("");
       load();
     } catch { /* ignore */ }
     setSaving(false);
@@ -210,6 +227,10 @@ export function WeeboActions() {
                       </div>
                       {item.notes && <div className="wa-item-notes">{item.notes}</div>}
                       <div className="wa-item-actions">
+                        {item.status !== "Complete" && (
+                          <button className="btn btn-primary" style={{ width: "auto", padding: "0.25rem 0.75rem", fontSize: "0.8rem" }}
+                            onClick={() => { setCompletingItem(item); setCompleteNote(item.notes || ""); }}>Complete</button>
+                        )}
                         <button className="btn btn-secondary" style={{ width: "auto", padding: "0.25rem 0.75rem", fontSize: "0.8rem" }}
                           onClick={() => setEditing({ ...item })}>Edit</button>
                         <button className="btn btn-secondary" style={{ width: "auto", padding: "0.25rem 0.75rem", fontSize: "0.8rem", color: "var(--red-600)" }}
@@ -222,6 +243,33 @@ export function WeeboActions() {
             </div>
           )
         )
+      )}
+      {completingItem && (
+        <div className="fn-modal-overlay" onClick={() => { setCompletingItem(null); setCompleteNote(""); }}>
+          <div className="fn-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="fn-modal-header">
+              <h3>Complete Action Item</h3>
+              <button className="fn-modal-close" onClick={() => { setCompletingItem(null); setCompleteNote(""); }}>&times;</button>
+            </div>
+            <div className="fn-modal-body">
+              <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "0.75rem" }}>{completingItem.action_text}</p>
+              <label className="fn-modal-label">Note (optional)</label>
+              <textarea
+                rows={3}
+                value={completeNote}
+                onChange={(e) => setCompleteNote(e.target.value)}
+                className="field-notes-textarea"
+                placeholder="Add a completion note..."
+              />
+            </div>
+            <div className="fn-modal-footer">
+              <button className="btn btn-primary" onClick={handleComplete} disabled={saving}>
+                {saving ? "Saving..." : "Mark Complete"}
+              </button>
+              <button className="btn btn-secondary" onClick={() => { setCompletingItem(null); setCompleteNote(""); }}>Cancel</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
