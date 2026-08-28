@@ -3237,15 +3237,35 @@ textarea {
 }
 
 .fn-sort-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: auto;
-  padding: 0.2rem 0.5rem;
-  font-size: 0.72rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-family: inherit;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  background: var(--neu-surface);
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-flat);
+}
+
+.fn-sort-btn:hover {
+  box-shadow: var(--shadow-raised);
+}
+
+.fn-sort-btn:active {
+  box-shadow: var(--shadow-inset);
+  transform: scale(0.98);
 }
 
 .fn-sort-btn.active {
   background: var(--accent);
   color: #fff;
-  border-color: var(--accent);
+  box-shadow: var(--shadow-flat), 0 0 8px var(--accent-glow);
 }
 
 .fn-edit-btn {

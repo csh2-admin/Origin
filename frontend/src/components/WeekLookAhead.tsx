@@ -598,7 +598,7 @@ export function WeekLookAhead({ engineer }: { engineer: string }) {
                               {CATEGORIES.map((cat) => (
                                 <button
                                   key={cat}
-                                  className={`btn btn-secondary fn-sort-btn${parseTags(n.activity_type).includes(cat) ? " active" : ""}`}
+                                  className={`fn-sort-btn${parseTags(n.activity_type).includes(cat) ? " active" : ""}`}
                                   style={{ fontSize: "0.7rem", padding: "0.15rem 0.5rem" }}
                                   onClick={() => handleCategorize(n.id, cat, n.activity_type || "Unprocessed")}
                                 >
