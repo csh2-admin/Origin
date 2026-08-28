@@ -60,11 +60,11 @@ export function WeeboActions() {
         status: "Complete",
         notes: completeNote.trim() || completingItem.notes || "",
       });
-      setCompletingItem(null);
-      setCompleteNote("");
       load();
     } catch { /* ignore */ }
     setSaving(false);
+    setCompletingItem(null);
+    setCompleteNote("");
   }
 
   async function handleDelete(id: number) {
