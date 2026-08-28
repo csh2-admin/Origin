@@ -196,7 +196,7 @@ export function WeekLookAhead({ engineer }: { engineer: string }) {
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
 
   /* ── Selected day / daily log state ── */
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(fmtDate(todayDate()));
   const [dlData, setDlData] = useState<DailyLogData | null>(null);
   const [dlLoading, setDlLoading] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
@@ -397,9 +397,7 @@ export function WeekLookAhead({ engineer }: { engineer: string }) {
               {fmtShort(days[0].dateObj)} — {fmtShort(days[6].dateObj)}
             </span>
             <button className="btn btn-secondary" style={{ width: "auto", fontSize: "0.7rem", padding: "0.15rem 0.5rem" }} onClick={() => shiftDays(7)}>&rarr;</button>
-            {!isToday && (
-              <button className="btn btn-secondary" style={{ width: "auto", fontSize: "0.7rem", padding: "0.15rem 0.5rem" }} onClick={() => setStartDate(todayDate())}>Today</button>
-            )}
+            <button className="btn btn-secondary" style={{ width: "auto", fontSize: "0.7rem", padding: "0.15rem 0.5rem" }} onClick={() => { setStartDate(todayDate()); setSelectedDate(fmtDate(todayDate())); }}>Today</button>
           </div>
         </div>
         <div className="dash-card-body">
