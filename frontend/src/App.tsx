@@ -14,11 +14,10 @@ import { TestHistory } from "./components/TestHistory";
 import { SystemDiagnostics } from "./components/SystemDiagnostics";
 import { Triplex } from "./components/Triplex";
 import { VoiceNote } from "./components/VoiceNote";
-import { DailyLog } from "./components/DailyLog";
 import { WeekLookAhead } from "./components/WeekLookAhead";
 import type { PositionState } from "./types";
 
-type Page = "dashboard" | "how-to" | "asset-model" | "assembly" | "startup" | "shutdown" | "run-test" | "test-history" | "daily-log" | "week-ahead" | "diagnostics" | "voice-note" | "dev-todo";
+type Page = "dashboard" | "how-to" | "asset-model" | "assembly" | "startup" | "shutdown" | "run-test" | "test-history" | "week-ahead" | "diagnostics" | "voice-note" | "dev-todo";
 
 interface NavItem {
   id: Page;
@@ -32,7 +31,6 @@ const NAV_ITEMS: NavItem[] = [
   { id: "asset-model", label: "Asset Model" },
   { id: "run-test", label: "Run Test" },
   { id: "test-history", label: "Test History" },
-  { id: "daily-log", label: "Daily Log" },
   { id: "week-ahead", label: "1-Week Look Ahead" },
   { id: "diagnostics", label: "System Diagnostics" },
   { id: "voice-note", label: "Field Notes" },
@@ -337,10 +335,8 @@ export function App() {
             <RunTest onNavigate={(p) => setPage(p as Page)} />
           ) : page === "test-history" ? (
             <TestHistory />
-          ) : page === "daily-log" ? (
-            <DailyLog engineer={user} />
           ) : page === "week-ahead" ? (
-            <WeekLookAhead />
+            <WeekLookAhead engineer={user!} />
           ) : page === "assembly" ? (
             <Assembly user={user!} />
           ) : page === "startup" ? (
