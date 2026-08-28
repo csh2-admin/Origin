@@ -3886,7 +3886,7 @@ textarea {
 
 /* ---- Week Look Ahead ---- */
 .week-look-ahead {
-  max-width: 1100px;
+  max-width: none;
 }
 
 .week-calendar {

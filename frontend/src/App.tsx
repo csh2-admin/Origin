@@ -193,7 +193,7 @@ export function App() {
           </button>
           <img src="/logo.png" alt="CSH2" className="header-logo" />
           <h1>ORIGIN</h1>
-          <span style={{ fontSize: "0.65rem", color: "var(--text-secondary)", marginLeft: "0.4rem", alignSelf: "flex-end", marginBottom: "0.35rem" }}>v0.2</span>
+          <span style={{ fontSize: "0.65rem", color: "var(--text-secondary)", marginLeft: "0.4rem", alignSelf: "flex-end", marginBottom: "0.35rem" }}>v0.3</span>
         </div>
         {page === "asset-model" && (
           <div className="time-travel">

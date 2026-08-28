@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, useRef } from "react";
-import { getActions, getDailyLog, updateFieldNote, deleteFieldNote, getReplies, createReply } from "../api/client";
+import { getActions, updateAction, getDailyLog, updateFieldNote, deleteFieldNote, getReplies, createReply } from "../api/client";
 import type { Reply } from "../api/client";
 import type { ActionItem } from "../types";
 import type { DailyLog as DailyLogData } from "../types";
@@ -205,6 +205,24 @@ export function WeekLookAhead({ engineer }: { engineer: string }) {
   const [editingNote, setEditingNote] = useState<{ id: number; text: string; category: string } | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [notesAsc, setNotesAsc] = useState(true);
+  const [completingAction, setCompletingAction] = useState<ActionItem | null>(null);
+  const [completeNote, setCompleteNote] = useState("");
+  const [completeSaving, setCompleteSaving] = useState(false);
+
+  async function handleCompleteAction() {
+    if (!completingAction) return;
+    setCompleteSaving(true);
+    try {
+      await updateAction(completingAction.id, {
+        status: "Complete",
+        notes: completeNote.trim() || completingAction.notes || "",
+      });
+      setActions((prev) => prev.map((a) => a.id === completingAction.id ? { ...a, status: "Complete" as const, notes: completeNote.trim() || a.notes } : a));
+    } catch { /* ignore */ }
+    setCompleteSaving(false);
+    setCompletingAction(null);
+    setCompleteNote("");
+  }
 
   useEffect(() => {
     setLoading(true);
@@ -388,6 +406,13 @@ export function WeekLookAhead({ engineer }: { engineer: string }) {
                                 {a.responsible && <span className="week-action-owner">{a.responsible}</span>}
                                 <span style={{ color: statusColor(a.status), fontSize: "0.68rem" }}>{a.status}</span>
                               </div>
+                              <button
+                                className="fn-sort-btn"
+                                style={{ fontSize: "0.65rem", padding: "0.15rem 0.4rem", marginTop: "0.2rem" }}
+                                onClick={(e) => { e.stopPropagation(); setCompletingAction(a); setCompleteNote(a.notes || ""); }}
+                              >
+                                Complete
+                              </button>
                             </div>
                           ))
                         )}
@@ -404,6 +429,13 @@ export function WeekLookAhead({ engineer }: { engineer: string }) {
                       <div key={a.id} className="week-action-item" style={{ flex: "0 0 auto", maxWidth: "250px" }}>
                         <span className="week-action-text">{a.action_text}</span>
                         {a.responsible && <span className="week-action-owner">{a.responsible}</span>}
+                        <button
+                          className="fn-sort-btn"
+                          style={{ fontSize: "0.65rem", padding: "0.15rem 0.4rem", marginTop: "0.2rem" }}
+                          onClick={() => { setCompletingAction(a); setCompleteNote(a.notes || ""); }}
+                        >
+                          Complete
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -705,6 +737,33 @@ export function WeekLookAhead({ engineer }: { engineer: string }) {
             <div className="fn-modal-footer">
               <button className="btn btn-primary" onClick={handleEditSave} disabled={!editingNote.text.trim()}>Save</button>
               <button className="btn btn-secondary" onClick={() => setEditingNote(null)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {completingAction && (
+        <div className="fn-modal-overlay" onClick={() => { setCompletingAction(null); setCompleteNote(""); }}>
+          <div className="fn-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="fn-modal-header">
+              <h3>Complete Action Item</h3>
+              <button className="fn-modal-close" onClick={() => { setCompletingAction(null); setCompleteNote(""); }}>&times;</button>
+            </div>
+            <div className="fn-modal-body">
+              <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "0.75rem" }}>{completingAction.action_text}</p>
+              <label className="fn-modal-label">Note (optional)</label>
+              <textarea
+                rows={3}
+                value={completeNote}
+                onChange={(e) => setCompleteNote(e.target.value)}
+                className="field-notes-textarea"
+                placeholder="Add a completion note..."
+              />
+            </div>
+            <div className="fn-modal-footer">
+              <button className="btn btn-primary" onClick={handleCompleteAction} disabled={completeSaving}>
+                {completeSaving ? "Saving..." : "Mark Complete"}
+              </button>
+              <button className="btn btn-secondary" onClick={() => { setCompletingAction(null); setCompleteNote(""); }}>Cancel</button>
             </div>
           </div>
         </div>
