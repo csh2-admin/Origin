@@ -1337,6 +1337,81 @@ def delete_field_note(conn, note_id):
     return jsonify({"ok": True})
 
 
+# ── Hypotheses ──
+
+
+@bp.route("/hypotheses", methods=["POST"])
+@require_db
+def create_hypothesis(conn):
+    import uuid
+    from flask import current_app
+
+    note = request.form.get("note", "").strip()
+    engineer = request.form.get("engineer", "")
+    if not note:
+        return jsonify({"detail": "Hypothesis text is required"}), 400
+
+    photo_urls = []
+    note_dir = os.path.join(current_app.config["UPLOAD_DIR"], "field_notes")
+    os.makedirs(note_dir, exist_ok=True)
+    photos = request.files.getlist("photos") or []
+    if not photos and "photo" in request.files:
+        photos = [request.files["photo"]]
+    for photo_file in photos[:4]:
+        ext = os.path.splitext(photo_file.filename or "photo.jpg")[1] or ".jpg"
+        filename = f"{uuid.uuid4().hex}{ext}"
+        photo_file.save(os.path.join(note_dir, filename))
+        photo_urls.append(f"/uploads/field_notes/{filename}")
+    photo_url = json.dumps(photo_urls) if photo_urls else None
+
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO memo_log (
+            engineer, source_file, activity_type, summary,
+            raw_transcript, severity, audio_url
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+        RETURNING id, logged_at, engineer, source_file, activity_type, summary, raw_transcript, audio_url
+        """,
+        (engineer, "Hypothesis", "Unprocessed", note[:200] if len(note) > 200 else note, note, "None", photo_url),
+    )
+    row = _dict_row(cur)
+    conn.commit()
+    return jsonify(_serialize(row)), 201
+
+
+@bp.route("/hypotheses", methods=["GET"])
+@require_db
+def list_hypotheses(conn):
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT id, logged_at, engineer, activity_type, summary, raw_transcript, audio_url
+        FROM memo_log
+        WHERE source_file = 'Hypothesis'
+        ORDER BY logged_at DESC
+        LIMIT 200
+        """,
+    )
+    rows = [_serialize(r) for r in _dict_rows(cur)]
+    try:
+        if rows:
+            ids = [r["id"] for r in rows]
+            placeholders = ",".join(["%s"] * len(ids))
+            cur.execute(
+                f"SELECT memo_id, COUNT(*) AS cnt FROM field_note_replies WHERE memo_id IN ({placeholders}) GROUP BY memo_id",
+                ids,
+            )
+            counts = {r["memo_id"]: r["cnt"] for r in _dict_rows(cur)}
+            for r in rows:
+                r["reply_count"] = counts.get(r["id"], 0)
+    except Exception:
+        logger.warning("Could not fetch reply counts for hypotheses")
+        for r in rows:
+            r["reply_count"] = 0
+    return jsonify(rows)
+
+
 # ── Field Note Replies ──
 
 

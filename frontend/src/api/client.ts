@@ -265,6 +265,26 @@ export async function markNotificationsRead(user: string) {
   });
 }
 
+// ── Hypotheses ──
+
+export async function createHypothesis(note: string, engineer: string, photos?: File[]) {
+  const form = new FormData();
+  form.append("note", note);
+  form.append("engineer", engineer);
+  if (photos) photos.forEach((p) => form.append("photos", p));
+  const res = await fetch(`${BASE}/hypotheses`, {
+    method: "POST",
+    credentials: "include",
+    body: form,
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json() as Promise<FieldNote>;
+}
+
+export async function getHypotheses() {
+  return request<FieldNote[]>("/hypotheses");
+}
+
 export async function getActions(filters: Record<string, string> = {}) {
   const qs = new URLSearchParams(filters).toString();
   return request<ActionItem[]>(`/actions${qs ? `?${qs}` : ""}`);
