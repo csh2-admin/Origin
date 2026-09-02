@@ -64,7 +64,7 @@ function PlaceholderPage({ title }: { title: string }) {
 export function App() {
   const [user, setUser] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
-  const [page, setPage] = useState<Page>("dashboard");
+  const [page, setPage] = useState<Page>("voice-note");
   const isTablet = typeof window !== "undefined" && window.innerWidth <= 1024;
   const [navOpen, setNavOpen] = useState(!isTablet);
   const [state, setState] = useState<PositionState[]>([]);

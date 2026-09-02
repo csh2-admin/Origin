@@ -208,6 +208,9 @@ export function WeekLookAhead({ engineer }: { engineer: string }) {
   const [completingAction, setCompletingAction] = useState<ActionItem | null>(null);
   const [completeNote, setCompleteNote] = useState("");
   const [completeSaving, setCompleteSaving] = useState(false);
+  const [expandedActions, setExpandedActions] = useState<Set<number>>(new Set());
+  const [editingAction, setEditingAction] = useState<ActionItem | null>(null);
+  const [editActionSaving, setEditActionSaving] = useState(false);
 
   async function handleCompleteAction() {
     if (!completingAction) return;
@@ -223,6 +226,32 @@ export function WeekLookAhead({ engineer }: { engineer: string }) {
     setCompleteSaving(false);
     setCompletingAction(null);
     setCompleteNote("");
+  }
+
+  function toggleExpanded(id: number, e: React.MouseEvent) {
+    e.stopPropagation();
+    setExpandedActions((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  async function handleEditActionSave() {
+    if (!editingAction) return;
+    setEditActionSaving(true);
+    try {
+      await updateAction(editingAction.id, {
+        action_text: editingAction.action_text,
+        status: editingAction.status,
+        responsible: editingAction.responsible || null,
+        due_date: editingAction.due_date || null,
+        notes: editingAction.notes || null,
+      });
+      setActions((prev) => prev.map((a) => a.id === editingAction.id ? { ...editingAction } : a));
+    } catch { /* ignore */ }
+    setEditActionSaving(false);
+    setEditingAction(null);
   }
 
   useEffect(() => {
@@ -424,22 +453,37 @@ export function WeekLookAhead({ engineer }: { engineer: string }) {
                         {dayActions.length === 0 ? (
                           <p className="week-day-empty">—</p>
                         ) : (
-                          dayActions.map((a) => (
-                            <div key={a.id} className="week-action-item">
-                              <span className="week-action-text">{a.action_text}</span>
-                              <div className="week-action-meta">
-                                {a.responsible && <span className="week-action-owner">{a.responsible}</span>}
-                                <span style={{ color: statusColor(a.status), fontSize: "0.68rem" }}>{a.status}</span>
+                          dayActions.map((a) => {
+                            const isExpanded = expandedActions.has(a.id);
+                            const isLong = a.action_text.length > 60;
+                            return (
+                              <div key={a.id} className="week-action-item" onClick={(e) => { if (isLong) toggleExpanded(a.id, e); }} style={isLong ? { cursor: "pointer" } : undefined}>
+                                <span className="week-action-text">
+                                  {isLong && !isExpanded ? a.action_text.slice(0, 57) + "..." : a.action_text}
+                                </span>
+                                <div className="week-action-meta">
+                                  {a.responsible && <span className="week-action-owner">{a.responsible}</span>}
+                                  <span style={{ color: statusColor(a.status), fontSize: "0.68rem" }}>{a.status}</span>
+                                </div>
+                                <div style={{ display: "flex", gap: "0.25rem", marginTop: "0.2rem" }}>
+                                  <button
+                                    className="fn-sort-btn"
+                                    style={{ fontSize: "0.65rem", padding: "0.15rem 0.4rem" }}
+                                    onClick={(e) => { e.stopPropagation(); setCompletingAction(a); setCompleteNote(a.notes || ""); }}
+                                  >
+                                    Complete
+                                  </button>
+                                  <button
+                                    className="fn-sort-btn"
+                                    style={{ fontSize: "0.65rem", padding: "0.15rem 0.4rem" }}
+                                    onClick={(e) => { e.stopPropagation(); setEditingAction({ ...a }); }}
+                                  >
+                                    Edit
+                                  </button>
+                                </div>
                               </div>
-                              <button
-                                className="fn-sort-btn"
-                                style={{ fontSize: "0.65rem", padding: "0.15rem 0.4rem", marginTop: "0.2rem" }}
-                                onClick={(e) => { e.stopPropagation(); setCompletingAction(a); setCompleteNote(a.notes || ""); }}
-                              >
-                                Complete
-                              </button>
-                            </div>
-                          ))
+                            );
+                          })
                         )}
                       </div>
                     </div>
@@ -450,19 +494,34 @@ export function WeekLookAhead({ engineer }: { engineer: string }) {
                 <div style={{ marginTop: "0.75rem" }}>
                   <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginBottom: "0.4rem" }}>No due date ({noDueDate.length})</p>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
-                    {noDueDate.map((a) => (
-                      <div key={a.id} className="week-action-item" style={{ flex: "0 0 auto", maxWidth: "250px" }}>
-                        <span className="week-action-text">{a.action_text}</span>
-                        {a.responsible && <span className="week-action-owner">{a.responsible}</span>}
-                        <button
-                          className="fn-sort-btn"
-                          style={{ fontSize: "0.65rem", padding: "0.15rem 0.4rem", marginTop: "0.2rem" }}
-                          onClick={() => { setCompletingAction(a); setCompleteNote(a.notes || ""); }}
-                        >
-                          Complete
-                        </button>
-                      </div>
-                    ))}
+                    {noDueDate.map((a) => {
+                      const isExpanded = expandedActions.has(a.id);
+                      const isLong = a.action_text.length > 60;
+                      return (
+                        <div key={a.id} className="week-action-item" style={{ flex: "0 0 auto", maxWidth: "250px", cursor: isLong ? "pointer" : undefined }} onClick={(e) => { if (isLong) toggleExpanded(a.id, e); }}>
+                          <span className="week-action-text">
+                            {isLong && !isExpanded ? a.action_text.slice(0, 57) + "..." : a.action_text}
+                          </span>
+                          {a.responsible && <span className="week-action-owner">{a.responsible}</span>}
+                          <div style={{ display: "flex", gap: "0.25rem", marginTop: "0.2rem" }}>
+                            <button
+                              className="fn-sort-btn"
+                              style={{ fontSize: "0.65rem", padding: "0.15rem 0.4rem" }}
+                              onClick={(e) => { e.stopPropagation(); setCompletingAction(a); setCompleteNote(a.notes || ""); }}
+                            >
+                              Complete
+                            </button>
+                            <button
+                              className="fn-sort-btn"
+                              style={{ fontSize: "0.65rem", padding: "0.15rem 0.4rem" }}
+                              onClick={(e) => { e.stopPropagation(); setEditingAction({ ...a }); }}
+                            >
+                              Edit
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -823,6 +882,61 @@ export function WeekLookAhead({ engineer }: { engineer: string }) {
                 {completeSaving ? "Saving..." : "Mark Complete"}
               </button>
               <button className="btn btn-secondary" onClick={() => { setCompletingAction(null); setCompleteNote(""); }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {editingAction && (
+        <div className="fn-modal-overlay" onClick={() => setEditingAction(null)}>
+          <div className="fn-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="fn-modal-header">
+              <h3>Edit Action Item</h3>
+              <button className="fn-modal-close" onClick={() => setEditingAction(null)}>&times;</button>
+            </div>
+            <div className="fn-modal-body">
+              <label className="fn-modal-label">Action</label>
+              <textarea rows={3} value={editingAction.action_text}
+                onChange={(e) => setEditingAction({ ...editingAction, action_text: e.target.value })}
+                className="field-notes-textarea" />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem", marginTop: "0.5rem" }}>
+                <div>
+                  <label className="fn-modal-label" style={{ marginBottom: "0.2rem" }}>Status</label>
+                  <select value={editingAction.status}
+                    onChange={(e) => setEditingAction({ ...editingAction, status: e.target.value as ActionItem["status"] })}
+                    style={{ width: "100%", padding: "0.4rem 0.6rem", borderRadius: "var(--radius)", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)" }}>
+                    <option value="Not Started">Not Started</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Complete">Complete</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="fn-modal-label" style={{ marginBottom: "0.2rem" }}>Responsible</label>
+                  <select value={editingAction.responsible || ""}
+                    onChange={(e) => setEditingAction({ ...editingAction, responsible: e.target.value })}
+                    style={{ width: "100%", padding: "0.4rem 0.6rem", borderRadius: "var(--radius)", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)" }}>
+                    <option value="">Select...</option>
+                    {TEAM_MEMBERS.map((m) => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="fn-modal-label" style={{ marginBottom: "0.2rem" }}>Due Date</label>
+                  <input type="date" value={editingAction.due_date || ""}
+                    onChange={(e) => setEditingAction({ ...editingAction, due_date: e.target.value })}
+                    style={{ width: "100%", padding: "0.4rem 0.6rem", borderRadius: "var(--radius)", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)" }} />
+                </div>
+              </div>
+              <div style={{ marginTop: "0.5rem" }}>
+                <label className="fn-modal-label" style={{ marginBottom: "0.2rem" }}>Notes</label>
+                <textarea rows={2} value={editingAction.notes || ""}
+                  onChange={(e) => setEditingAction({ ...editingAction, notes: e.target.value })}
+                  className="field-notes-textarea" placeholder="Notes..." />
+              </div>
+            </div>
+            <div className="fn-modal-footer">
+              <button className="btn btn-primary" onClick={handleEditActionSave} disabled={editActionSaving || !editingAction.action_text.trim()}>
+                {editActionSaving ? "Saving..." : "Save"}
+              </button>
+              <button className="btn btn-secondary" onClick={() => setEditingAction(null)}>Cancel</button>
             </div>
           </div>
         </div>
