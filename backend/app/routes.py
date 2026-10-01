@@ -1567,8 +1567,8 @@ def create_test_log_entry(conn):
         """,
         (
             test_id, test_name,
-            datetime.fromisoformat(start_utc),
-            datetime.fromisoformat(body["end_utc"]) if body.get("end_utc") else None,
+            start_utc,
+            body.get("end_utc") or None,
             body.get("summary") or None,
             body.get("objective") or None,
             body.get("known_issues") or None,
@@ -1591,7 +1591,7 @@ def update_test_log_entry(test_id, conn):
         if key in body:
             val = body[key]
             if key in ("start_utc", "end_utc"):
-                val = datetime.fromisoformat(val) if val else None
+                val = val if val else None
             elif val is not None:
                 val = str(val).strip() if val else None
             sets.append(f"{key} = %s")
