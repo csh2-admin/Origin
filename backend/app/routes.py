@@ -1567,8 +1567,8 @@ def create_test_log_entry(conn):
         """,
         (
             test_id, test_name,
-            start_utc,
-            body.get("end_utc") or None,
+            _parse_ts(start_utc),
+            _parse_ts(body.get("end_utc")),
             body.get("summary") or None,
             body.get("objective") or None,
             body.get("known_issues") or None,
@@ -1591,7 +1591,7 @@ def update_test_log_entry(test_id, conn):
         if key in body:
             val = body[key]
             if key in ("start_utc", "end_utc"):
-                val = val if val else None
+                val = _parse_ts(val)
             elif val is not None:
                 val = str(val).strip() if val else None
             sets.append(f"{key} = %s")
@@ -1621,6 +1621,16 @@ def delete_test_log_entry(test_id, conn):
         return jsonify({"detail": "Not found"}), 404
     conn.commit()
     return jsonify({"status": "deleted"})
+
+
+def _parse_ts(val):
+    """Parse an ISO timestamp string, handling the Z suffix pg8000 needs datetime objects."""
+    if not val:
+        return None
+    s = str(val).strip()
+    if s.endswith("Z"):
+        s = s[:-1] + "+00:00"
+    return datetime.fromisoformat(s)
 
 
 ACTION_COLUMNS = "id, created_at, updated_at, memo_id, engineer, action_text, status, responsible, due_date, notes, completed_by, completed_at"
