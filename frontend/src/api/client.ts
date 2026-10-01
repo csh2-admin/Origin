@@ -1,4 +1,4 @@
-import type { ActionItem, AssemblyInstruction, AssemblyRun, AssemblyStepLog, AssemblyVerification, ChangeEvent, ChangePayload, ComponentPhoto, DailyLog, DashboardData, PartCatalogEntry, PositionLimit, PositionState, TestReport, TestRun, UsageStats } from "../types";
+import type { ActionItem, AssemblyInstruction, AssemblyRun, AssemblyStepLog, AssemblyVerification, ChangeEvent, ChangePayload, ComponentPhoto, DailyLog, DashboardData, PartCatalogEntry, PositionLimit, PositionState, TestLogEntry, TestReport, TestRun, UsageStats } from "../types";
 
 const BASE = "/api";
 
@@ -283,6 +283,30 @@ export async function createHypothesis(note: string, engineer: string, photos?: 
 
 export async function getHypotheses() {
   return request<FieldNote[]>("/hypotheses");
+}
+
+// ── Test Log ──
+
+export async function getTestLog() {
+  return request<TestLogEntry[]>("/test-log");
+}
+
+export async function createTestLogEntry(fields: Record<string, unknown>) {
+  return request<TestLogEntry>("/test-log", {
+    method: "POST",
+    body: JSON.stringify(fields),
+  });
+}
+
+export async function updateTestLogEntry(testId: string, fields: Record<string, unknown>) {
+  return request<TestLogEntry>(`/test-log/${encodeURIComponent(testId)}`, {
+    method: "PUT",
+    body: JSON.stringify(fields),
+  });
+}
+
+export async function deleteTestLogEntry(testId: string) {
+  return request<{ status: string }>(`/test-log/${encodeURIComponent(testId)}`, { method: "DELETE" });
 }
 
 export async function getActions(filters: Record<string, string> = {}) {

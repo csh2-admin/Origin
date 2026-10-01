@@ -123,6 +123,19 @@ export interface ActionItem {
   completed_at: string | null;
 }
 
+export interface TestLogEntry {
+  test_id: string;
+  test_name: string;
+  start_utc: string;
+  end_utc: string | null;
+  summary: string | null;
+  objective: string | null;
+  known_issues: string | null;
+  operator: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface AskResponse {
   answer: string;
   sql: string;

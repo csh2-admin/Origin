@@ -14,11 +14,12 @@ import { TestHistory } from "./components/TestHistory";
 import { SystemDiagnostics } from "./components/SystemDiagnostics";
 import { Triplex } from "./components/Triplex";
 import { HypothesisLog } from "./components/HypothesisLog";
+import { TestLog } from "./components/TestLog";
 import { VoiceNote } from "./components/VoiceNote";
 import { WeekLookAhead } from "./components/WeekLookAhead";
 import type { PositionState } from "./types";
 
-type Page = "dashboard" | "how-to" | "asset-model" | "assembly" | "startup" | "shutdown" | "run-test" | "test-history" | "week-ahead" | "diagnostics" | "voice-note" | "hypothesis" | "dev-todo";
+type Page = "dashboard" | "how-to" | "asset-model" | "assembly" | "startup" | "shutdown" | "run-test" | "test-history" | "week-ahead" | "diagnostics" | "voice-note" | "hypothesis" | "test-log" | "dev-todo";
 
 interface NavItem {
   id: Page;
@@ -32,6 +33,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: "voice-note", label: "Field Notes" },
   { id: "hypothesis", label: "Hypotheses" },
   { id: "week-ahead", label: "1-Week Look Ahead" },
+  { id: "test-log", label: "Test Log" },
   { id: "asset-model", label: "Asset Model" },
   { id: "run-test", label: "Run Test" },
   { id: "test-history", label: "Test History" },
@@ -351,6 +353,8 @@ export function App() {
             <VoiceNote key={fieldNotesTab} engineer={user!} initialTab={fieldNotesTab} />
           ) : page === "hypothesis" ? (
             <HypothesisLog engineer={user!} />
+          ) : page === "test-log" ? (
+            <TestLog engineer={user!} />
           ) : page === "dev-todo" ? (
             <DevTodo />
           ) : (

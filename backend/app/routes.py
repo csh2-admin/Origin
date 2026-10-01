@@ -1536,6 +1536,93 @@ def _dict_row_from(description, row):
     return dict(zip(cols, row))
 
 
+# ── Test Log ──────────────────────────────────────────────────────────────────
+
+TEST_LOG_COLUMNS = "test_id, test_name, start_utc, end_utc, summary, objective, known_issues, operator, created_at, updated_at"
+
+
+@bp.route("/test-log", methods=["GET"])
+@require_db
+def list_test_log(conn):
+    cur = conn.cursor()
+    cur.execute(f"SELECT {TEST_LOG_COLUMNS} FROM test_log ORDER BY start_utc DESC LIMIT 500")
+    return jsonify([_serialize(r) for r in _dict_rows(cur)])
+
+
+@bp.route("/test-log", methods=["POST"])
+@require_db
+def create_test_log_entry(conn):
+    body = request.get_json() or {}
+    test_id = (body.get("test_id") or "").strip()
+    test_name = (body.get("test_name") or "").strip()
+    start_utc = body.get("start_utc")
+    if not test_id or not test_name or not start_utc:
+        return jsonify({"detail": "test_id, test_name, and start_utc are required"}), 400
+    cur = conn.cursor()
+    cur.execute(
+        f"""
+        INSERT INTO test_log (test_id, test_name, start_utc, end_utc, summary, objective, known_issues, operator)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        RETURNING {TEST_LOG_COLUMNS}
+        """,
+        (
+            test_id, test_name,
+            datetime.fromisoformat(start_utc),
+            datetime.fromisoformat(body["end_utc"]) if body.get("end_utc") else None,
+            body.get("summary") or None,
+            body.get("objective") or None,
+            body.get("known_issues") or None,
+            body.get("operator") or None,
+        ),
+    )
+    row = _dict_row(cur)
+    conn.commit()
+    return jsonify(_serialize(row)), 201
+
+
+@bp.route("/test-log/<test_id>", methods=["PUT"])
+@require_db
+def update_test_log_entry(test_id, conn):
+    body = request.get_json() or {}
+    allowed = {"test_name", "start_utc", "end_utc", "summary", "objective", "known_issues", "operator"}
+    sets = []
+    params = []
+    for key in allowed:
+        if key in body:
+            val = body[key]
+            if key in ("start_utc", "end_utc"):
+                val = datetime.fromisoformat(val) if val else None
+            elif val is not None:
+                val = str(val).strip() if val else None
+            sets.append(f"{key} = %s")
+            params.append(val)
+    if not sets:
+        return jsonify({"detail": "No fields to update"}), 400
+    params.append(test_id)
+    cur = conn.cursor()
+    cur.execute(
+        f"UPDATE test_log SET {', '.join(sets)} WHERE test_id = %s RETURNING {TEST_LOG_COLUMNS}",
+        params,
+    )
+    row = _dict_row(cur)
+    if not row:
+        return jsonify({"detail": "Not found"}), 404
+    conn.commit()
+    return jsonify(_serialize(row))
+
+
+@bp.route("/test-log/<test_id>", methods=["DELETE"])
+@require_db
+def delete_test_log_entry(test_id, conn):
+    cur = conn.cursor()
+    cur.execute("DELETE FROM test_log WHERE test_id = %s RETURNING test_id", (test_id,))
+    row = cur.fetchone()
+    if not row:
+        return jsonify({"detail": "Not found"}), 404
+    conn.commit()
+    return jsonify({"status": "deleted"})
+
+
 ACTION_COLUMNS = "id, created_at, updated_at, memo_id, engineer, action_text, status, responsible, due_date, notes, completed_by, completed_at"
 
 
