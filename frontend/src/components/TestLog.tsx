@@ -2,26 +2,11 @@ import { useEffect, useState } from "react";
 import { getTestLog, createTestLogEntry, updateTestLogEntry, deleteTestLogEntry } from "../api/client";
 import type { TestLogEntry } from "../types";
 
-const ET_OFFSET_SUMMER = -4;
-const ET_OFFSET_WINTER = -5;
-
-function isDST(d: Date): boolean {
-  const jan = new Date(d.getFullYear(), 0, 1).getTimezoneOffset();
-  const jul = new Date(d.getFullYear(), 6, 1).getTimezoneOffset();
-  return d.getTimezoneOffset() < Math.max(jan, jul);
-}
-
-function etOffsetHours(d: Date): number {
-  return isDST(d) ? ET_OFFSET_SUMMER : ET_OFFSET_WINTER;
-}
-
 function localETtoUTC(dateStr: string, timeStr: string): string | null {
   if (!dateStr || !timeStr) return null;
   const local = new Date(`${dateStr}T${timeStr}`);
   if (isNaN(local.getTime())) return null;
-  const offset = etOffsetHours(local);
-  const utc = new Date(local.getTime() - offset * 3600_000);
-  return utc.toISOString();
+  return local.toISOString();
 }
 
 function utcToETDisplay(iso: string | null): string {
