@@ -53,6 +53,11 @@ function todayStr(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+function nowTimeStr(): string {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
 const inputStyle: React.CSSProperties = { width: "100%", padding: "0.4rem 0.6rem", borderRadius: "var(--radius)", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "0.85rem" };
 
 export function TestLog({ engineer }: { engineer: string }) {
@@ -64,7 +69,7 @@ export function TestLog({ engineer }: { engineer: string }) {
   const [testId, setTestId] = useState("");
   const [testName, setTestName] = useState("");
   const [startDate, setStartDate] = useState(todayStr());
-  const [startTime, setStartTime] = useState("");
+  const [startTime, setStartTime] = useState(nowTimeStr());
   const [endDate, setEndDate] = useState("");
   const [endTime, setEndTime] = useState("");
   const [summary, setSummary] = useState("");
@@ -112,7 +117,7 @@ export function TestLog({ engineer }: { engineer: string }) {
         operator: engineer,
       });
       setSaved(true);
-      setTestId(""); setTestName(""); setStartDate(todayStr()); setStartTime(""); setEndDate(""); setEndTime("");
+      setTestId(""); setTestName(""); setStartDate(todayStr()); setStartTime(nowTimeStr()); setEndDate(""); setEndTime("");
       setSummary(""); setObjective(""); setKnownIssues("");
       await load();
     } catch (err) { setError(err instanceof Error ? err.message : "Save failed"); }
@@ -190,12 +195,12 @@ export function TestLog({ engineer }: { engineer: string }) {
                 <div>
                   <label className="fn-modal-label">Test ID</label>
                   <input type="text" value={testId} onChange={(e) => { setTestId(e.target.value); setSaved(false); }}
-                    placeholder="e.g. 2026-09-04_A" style={inputStyle} />
+                    placeholder="e.g. B.1 or B.5" style={inputStyle} />
                 </div>
                 <div>
                   <label className="fn-modal-label">Test Name</label>
                   <input type="text" value={testName} onChange={(e) => { setTestName(e.target.value); setSaved(false); }}
-                    placeholder="e.g. AOV step-down" style={inputStyle} />
+                    placeholder="e.g. Slow Fill Tank 25" style={inputStyle} />
                 </div>
               </div>
 
@@ -233,7 +238,7 @@ export function TestLog({ engineer }: { engineer: string }) {
               <div style={{ marginTop: "0.5rem" }}>
                 <label className="fn-modal-label">Summary</label>
                 <textarea rows={3} value={summary} onChange={(e) => setSummary(e.target.value)}
-                  placeholder="What happened? Free prose — no dropdowns." className="field-notes-textarea" />
+                  placeholder="What happened?" className="field-notes-textarea" />
               </div>
 
               <div style={{ marginTop: "0.5rem" }}>
@@ -248,7 +253,7 @@ export function TestLog({ engineer }: { engineer: string }) {
                   {saving ? "Saving..." : "Log Test"}
                 </button>
                 <button className="btn btn-secondary field-notes-discard-btn" onClick={() => {
-                  setTestId(""); setTestName(""); setStartDate(todayStr()); setStartTime(""); setEndDate(""); setEndTime("");
+                  setTestId(""); setTestName(""); setStartDate(todayStr()); setStartTime(nowTimeStr()); setEndDate(""); setEndTime("");
                   setSummary(""); setObjective(""); setKnownIssues(""); setError(""); setSaved(false);
                 }} disabled={saving}>Discard</button>
               </div>
