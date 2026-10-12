@@ -1179,7 +1179,7 @@ def list_field_notes(conn):
         FROM memo_log
         WHERE source_file IN ('Field Note', 'Voice Note')
         ORDER BY logged_at DESC
-        LIMIT 100
+        LIMIT 500
         """,
     )
     rows = [_serialize(r) for r in _dict_rows(cur)]
