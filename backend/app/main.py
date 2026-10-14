@@ -7,7 +7,7 @@ load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 from flask import Flask, request, send_from_directory
 from flask_cors import CORS
 
-from .routes import bp
+from .routes import ALL_BLUEPRINTS
 
 UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -24,7 +24,8 @@ def serve_upload(filename):
 
 FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist")
 
-app.register_blueprint(bp, url_prefix="/api")
+for _bp in ALL_BLUEPRINTS:
+    app.register_blueprint(_bp, url_prefix="/api")
 
 if os.path.isdir(FRONTEND_DIR):
     @app.route("/")
