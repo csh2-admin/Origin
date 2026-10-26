@@ -1,6 +1,10 @@
+import logging
+
 from flask import Blueprint, jsonify, make_response, request
 
 from ..database import create_session, delete_session, require_db
+
+logger = logging.getLogger(__name__)
 
 bp = Blueprint("auth", __name__)
 
@@ -13,6 +17,7 @@ def login():
     try:
         session_id = create_session(username, password)
     except Exception:
+        logger.exception("Login failed for user=%s", username)
         return jsonify({"detail": "Invalid database credentials"}), 401
     resp = make_response(jsonify({"status": "ok", "user": username}))
     resp.set_cookie(
