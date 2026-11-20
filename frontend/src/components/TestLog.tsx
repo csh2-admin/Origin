@@ -55,7 +55,7 @@ export function TestLog({ engineer }: { engineer: string }) {
   const [testName, setTestName] = useState("");
   const [startDate, setStartDate] = useState(todayStr());
   const [startTime, setStartTime] = useState(nowTimeStr());
-  const [endDate, setEndDate] = useState("");
+  const [endDate, setEndDate] = useState(todayStr());
   const [endTime, setEndTime] = useState("");
   const [summary, setSummary] = useState("");
   const [objective, setObjective] = useState("");
@@ -102,7 +102,7 @@ export function TestLog({ engineer }: { engineer: string }) {
         operator: engineer,
       });
       setSaved(true);
-      setTestId(""); setTestName(""); setStartDate(todayStr()); setStartTime(nowTimeStr()); setEndDate(""); setEndTime("");
+      setTestId(""); setTestName(""); setStartDate(todayStr()); setStartTime(nowTimeStr()); setEndDate(todayStr()); setEndTime("");
       setSummary(""); setObjective(""); setKnownIssues("");
       await load();
     } catch (err) { setError(err instanceof Error ? err.message : "Save failed"); }
@@ -192,7 +192,7 @@ export function TestLog({ engineer }: { engineer: string }) {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "0.75rem", marginTop: "0.75rem" }}>
                 <div>
                   <label className="fn-modal-label">Start Date (ET)</label>
-                  <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={inputStyle} />
+                  <input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setEndDate(e.target.value); }} style={inputStyle} />
                 </div>
                 <div>
                   <label className="fn-modal-label">Start Time (ET)</label>
@@ -238,7 +238,7 @@ export function TestLog({ engineer }: { engineer: string }) {
                   {saving ? "Saving..." : "Log Test"}
                 </button>
                 <button className="btn btn-secondary field-notes-discard-btn" onClick={() => {
-                  setTestId(""); setTestName(""); setStartDate(todayStr()); setStartTime(nowTimeStr()); setEndDate(""); setEndTime("");
+                  setTestId(""); setTestName(""); setStartDate(todayStr()); setStartTime(nowTimeStr()); setEndDate(todayStr()); setEndTime("");
                   setSummary(""); setObjective(""); setKnownIssues(""); setError(""); setSaved(false);
                 }} disabled={saving}>Discard</button>
               </div>
