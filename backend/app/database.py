@@ -38,9 +38,17 @@ def _dict_row(cursor):
     return dict(zip(cols, row)) if row else None
 
 
+def _purge_expired():
+    now = time.time()
+    expired = [k for k, v in _sessions.items() if now - v["created_at"] > SESSION_TTL]
+    for k in expired:
+        del _sessions[k]
+
+
 def create_session(username, password):
     conn = _connect(username, password)
     conn.close()
+    _purge_expired()
     session_id = uuid.uuid4().hex
     _sessions[session_id] = {
         "username": username,
